@@ -139,7 +139,9 @@
     "yn": "^3.1.1"
   },
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "lint": "eslint src/",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",

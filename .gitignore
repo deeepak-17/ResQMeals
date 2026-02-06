@@ -5,9 +5,13 @@ dist
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Logs
 npm-debug.log*
 
 # OS files
 .DS_Store
+
+# Internal docs (not for public repo)
+docs/
