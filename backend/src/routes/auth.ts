@@ -1,24 +1,35 @@
 import express, { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { validationResult } from "express-validator";
+import rateLimit from "express-rate-limit";
 import User, { IUser } from "../models/User";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { registerValidation, loginValidation } from "../middleware/validation";
 
 const router = express.Router();
 
+// Rate limiter for login endpoint - stricter limits to prevent brute force attacks
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 login requests per windowMs
+    message: "Too many login attempts from this IP, please try again after 15 minutes",
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Rate limiter for registration endpoint - prevent spam registrations
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3, // Limit each IP to 3 registration requests per windowMs
+    message: "Too many accounts created from this IP, please try again after an hour",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post("/register", registerValidation, async (req: Request, res: Response): Promise<void> => {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-    }
-
+router.post("/register", registerLimiter, async (req: Request, res: Response): Promise<void> => {
     const { name, email, password, role, organizationType } = req.body;
 
     try {
@@ -73,14 +84,7 @@ router.post("/register", registerValidation, async (req: Request, res: Response)
 // @route   POST /api/auth/login
 // @desc    Auth user & get token
 // @access  Public
-router.post("/login", loginValidation, async (req: Request, res: Response): Promise<void> => {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-    }
-
+router.post("/login", loginLimiter, async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     try {

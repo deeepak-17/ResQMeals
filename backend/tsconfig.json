@@ -9,6 +9,5 @@
         "strict": true,
         "skipLibCheck": true
     },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist"]
+    "exclude": ["verify-auth.ts", "node_modules"]
 }
