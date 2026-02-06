@@ -19,6 +19,13 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
         req.user = decoded;
         next();
     } catch (err) {
+        if (err instanceof jwt.TokenExpiredError) {
+            console.error("JWT verification failed: token expired", { message: err.message });
+        } else if (err instanceof jwt.JsonWebTokenError) {
+            console.error("JWT verification failed: invalid token", { message: err.message });
+        } else {
+            console.error("JWT verification failed with unexpected error", err);
+        }
         res.status(401).json({ message: "Token is not valid" });
     }
 };
