@@ -1,6 +1,8 @@
 # Node
 node_modules
 dist
+*.js
+!eslint.config.mjs
 
 # Environment files
 .env

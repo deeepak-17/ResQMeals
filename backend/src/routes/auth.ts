@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import User, { IUser } from "../models/User";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { registerValidation, loginValidation } from "../middleware/validation";
 
 const router = express.Router();
 
