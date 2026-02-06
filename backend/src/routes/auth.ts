@@ -69,7 +69,7 @@ router.post("/register", registerLimiter, async (req: Request, res: Response): P
         jwt.sign(
             payload,
             process.env.JWT_SECRET as string,
-            { expiresIn: 360000 },
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
             (err, token) => {
                 if (err) throw err;
                 res.json({ token });
@@ -111,7 +111,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
         jwt.sign(
             payload,
             process.env.JWT_SECRET as string,
-            { expiresIn: 360000 },
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
             (err, token) => {
                 if (err) throw err;
                 res.json({ token, role: user?.role });
