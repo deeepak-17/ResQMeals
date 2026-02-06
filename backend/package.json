@@ -78,7 +78,7 @@
     "mkdirp": "^1.0.4",
     "mongodb": "^7.0.0",
     "mongodb-connection-string-url": "^7.0.1",
-    "mongoose": "^9.1.5",
+    "mongoose": "^9.1.6",
     "mpath": "^0.9.0",
     "mquery": "^6.0.0",
     "ms": "^2.1.3",

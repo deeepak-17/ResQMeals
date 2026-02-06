@@ -10,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+import donationRoutes from "./routes/donation";
+app.use("/api/donations", donationRoutes);
+
 mongoose.connect(process.env.MONGO_URI as string)
     .then(() => console.log("MongoDB connected"))
     .catch((err) => console.log(err));
