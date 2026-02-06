@@ -10,7 +10,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Routes
+import authRoutes from "./routes/auth";
 import donationRoutes from "./routes/donation";
+
+app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);
 
 mongoose.connect(process.env.MONGO_URI as string)

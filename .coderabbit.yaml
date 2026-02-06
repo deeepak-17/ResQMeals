@@ -1,0 +1,94 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit Configuration for ResQMeals
+# Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: "en-US"
+
+# Tone and style of reviews
+tone_instructions: "Be concise and constructive. Focus on actionable feedback."
+
+# Early access features
+early_access: false
+
+# Enable free tier features
+enable_free_tier: true
+
+reviews:
+  # Profile for review strictness: chill, assertive, or nitpicky
+  profile: "assertive"
+  
+  # Request changes workflow (approve, comment, request_changes)
+  request_changes_workflow: true
+  
+  # High-level summary in PR comments
+  high_level_summary: true
+  
+  # Add a poem to the review (fun feature, disable if you prefer serious reviews)
+  poem: false
+  
+  # Review status in PR comments
+  review_status: true
+  
+  # Collapse walkthrough in PR comments
+  collapse_walkthrough: false
+  
+  # Sequence diagrams for complex logic
+  sequence_diagrams: true
+  
+  # Changed files summary
+  changed_files_summary: true
+  
+  # Labeling PRs based on changes
+  labeling_instructions: []
+  
+  # Auto-review on PR open
+  auto_review:
+    enabled: true
+    # Ignore drafts until ready
+    drafts: false
+    # Base branches to review
+    base_branches: 
+      - "main"
+      - "develop"
+
+  # Path-specific instructions
+  path_instructions:
+    - path: "backend/src/**/*.ts"
+      instructions: |
+        Review for:
+        - TypeScript best practices
+        - Proper error handling
+        - Security vulnerabilities (SQL injection, XSS, etc.)
+        - API design consistency
+        - Input validation
+    
+    - path: "**/*.test.ts"
+      instructions: |
+        Review for:
+        - Test coverage completeness
+        - Edge cases
+        - Proper mocking practices
+    
+    - path: "docs/**/*"
+      instructions: |
+        Review for:
+        - Clarity and completeness
+        - Technical accuracy
+        - Proper formatting
+
+# Paths and patterns to ignore during review
+path_filters:
+  - "!**/*.lock"
+  - "!**/package-lock.json"
+  - "!**/node_modules/**"
+  - "!**/.git/**"
+  - "!**/*.min.js"
+  - "!**/*.min.css"
+  - "!**/dist/**"
+  - "!**/build/**"
+  - "!**/.DS_Store"
+  - "!**/coverage/**"
+
+# Chat settings
+chat:
+  auto_reply: true
