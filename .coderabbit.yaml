@@ -76,18 +76,18 @@ reviews:
         - Technical accuracy
         - Proper formatting
 
-# Paths and patterns to ignore during review
-path_filters:
-  - "!**/*.lock"
-  - "!**/package-lock.json"
-  - "!**/node_modules/**"
-  - "!**/.git/**"
-  - "!**/*.min.js"
-  - "!**/*.min.css"
-  - "!**/dist/**"
-  - "!**/build/**"
-  - "!**/.DS_Store"
-  - "!**/coverage/**"
+  # Paths and patterns to ignore during review
+  path_filters:
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/node_modules/**"
+    - "!**/.git/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/.DS_Store"
+    - "!**/coverage/**"
 
 # Chat settings
 chat:
