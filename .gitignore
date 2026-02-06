@@ -1,10 +1,17 @@
 # Node
 node_modules
 dist
+*.js
+!backend/eslint.config.mjs
+
+# Backend TypeScript compiled files
+backend/**/*.js
+!backend/**/*.config.js
 
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Logs
 npm-debug.log*
