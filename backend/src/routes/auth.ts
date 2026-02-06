@@ -1,15 +1,24 @@
 import express, { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { validationResult } from "express-validator";
 import User, { IUser } from "../models/User";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { registerValidation, loginValidation } from "../middleware/validation";
 
 const router = express.Router();
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post("/register", async (req: Request, res: Response): Promise<void> => {
+router.post("/register", registerValidation, async (req: Request, res: Response): Promise<void> => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+    }
+
     const { name, email, password, role, organizationType } = req.body;
 
     try {
@@ -58,7 +67,14 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 // @route   POST /api/auth/login
 // @desc    Auth user & get token
 // @access  Public
-router.post("/login", async (req: Request, res: Response): Promise<void> => {
+router.post("/login", loginValidation, async (req: Request, res: Response): Promise<void> => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+    }
+
     const { email, password } = req.body;
 
     try {
