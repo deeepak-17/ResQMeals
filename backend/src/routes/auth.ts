@@ -35,7 +35,13 @@ router.post("/register", registerValidation, async (req: Request, res: Response)
             password,
             role,
             organizationType,
-            verified: role === 'donor' // Auto-verify donors for now, others pending
+            // NOTE: Only donors are auto-verified on registration.
+            // According to docs/BACKEND_STRUCTURE.md, NGO and volunteer accounts
+            // must go through a separate verification workflow (e.g. manual/admin
+            // review or a dedicated verification flow) before being marked as
+            // verified in the system. They are therefore created as unverified
+            // here and handled by that workflow.
+            verified: role === 'donor'
         });
 
         const salt = await bcrypt.genSalt(10);
