@@ -13,8 +13,6 @@ const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5, // Limit each IP to 5 login requests per windowMs
     message: "Too many login attempts from this IP, please try again after 15 minutes",
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 // Rate limiter for registration endpoint - prevent spam registrations
@@ -22,8 +20,6 @@ const registerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3, // Limit each IP to 3 registration requests per windowMs
     message: "Too many accounts created from this IP, please try again after an hour",
-    standardHeaders: true,
-    legacyHeaders: false,
 });
 
 // @route   POST /api/auth/register
@@ -63,18 +59,16 @@ router.post("/register", registerLimiter, async (req: Request, res: Response): P
         const payload = {
             user: {
                 id: user.id
-            }
+            },
+            role: user.role
         };
 
-        jwt.sign(
+        const token = jwt.sign(
             payload,
             process.env.JWT_SECRET as string,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
+            { expiresIn: 3600 } // 1 hour in seconds
         );
+        res.json({ token });
     } catch (err: any) {
         console.error(err.message);
         res.status(500).send("Server Error");
@@ -105,18 +99,16 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
         const payload = {
             user: {
                 id: user.id
-            }
+            },
+            role: user.role
         };
 
-        jwt.sign(
+        const token = jwt.sign(
             payload,
             process.env.JWT_SECRET as string,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token, role: user?.role });
-            }
+            { expiresIn: 3600 } // 1 hour in seconds
         );
+        res.json({ token, role: user?.role });
     } catch (err: any) {
         console.error(err.message);
         res.status(500).send("Server Error");

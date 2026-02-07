@@ -50,6 +50,7 @@ reviews:
     base_branches: 
       - "main"
       - "develop"
+      - "dev"
 
   # Path-specific instructions
   path_instructions:
