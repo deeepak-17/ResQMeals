@@ -13,9 +13,11 @@ app.use(express.json());
 // Routes
 import authRoutes from "./routes/auth";
 import donationRoutes from "./routes/donation";
+import ngoRoutes from "./routes/ngo";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);
+app.use("/api/ngo", ngoRoutes);
 
 mongoose.connect(process.env.MONGO_URI as string)
     .then(() => console.log("MongoDB connected"))

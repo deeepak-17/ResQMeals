@@ -54,16 +54,6 @@ npm install
 npm run dev
 ```
 
-## Team
-
-| Member | Role |
-|--------|------|
-| Deepak | DevOps + NGO Module |
-| Member 2 | Auth System |
-| Member 3 | Donor Module |
-| Member 4 | Volunteer Module |
-| Member 5 | Admin + Matching |
-
 ## Git Workflow
 
 1. Create feature branch from `develop`

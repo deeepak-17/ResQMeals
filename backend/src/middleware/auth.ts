@@ -1,9 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-// Extend Express Request to include user
+// JWT payload structure: { user: { id: string }, role: string }
+export interface UserPayload {
+    user: {
+        id: string;
+    };
+    role: string;
+}
+
+// Extend Express Request to include typed user payload
 export interface AuthRequest extends Request {
-    user?: any;
+    user?: UserPayload;
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => { // Return type void, handle response with res methods
@@ -15,7 +23,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as UserPayload;
         req.user = decoded;
         next();
     } catch (err) {

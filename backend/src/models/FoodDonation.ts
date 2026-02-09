@@ -12,6 +12,10 @@ export interface IFoodDonation extends Document {
     };
     status: "available" | "reserved" | "collected" | "expired";
     imageUrl?: string;
+    // NGO workflow fields
+    reservedBy?: mongoose.Schema.Types.ObjectId;
+    reservedAt?: Date;
+    collectedAt?: Date;
     createdAt: Date;
 }
 
@@ -32,6 +36,10 @@ const FoodDonationSchema = new Schema<IFoodDonation>(
             default: "available",
         },
         imageUrl: { type: String },
+        // NGO workflow fields
+        reservedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        reservedAt: { type: Date },
+        collectedAt: { type: Date },
     },
     { timestamps: true }
 );
