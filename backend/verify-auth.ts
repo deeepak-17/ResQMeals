@@ -11,7 +11,7 @@ const testAuth = async () => {
         const registerRes = await axios.post(`${API_URL}/register`, {
             name: "Test User",
             email: testEmail,
-            password: "password123",
+            password: "Password123!",
             role: "donor",
             organizationType: "individual"
         });
@@ -23,7 +23,7 @@ const testAuth = async () => {
         console.log("\n2. Testing Login...");
         const loginRes = await axios.post(`${API_URL}/login`, {
             email: testEmail,
-            password: "password123"
+            password: "Password123!"
         });
         console.log("✅ Login Successful. Token received:", !!loginRes.data.token);
 

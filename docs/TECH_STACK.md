@@ -4,7 +4,7 @@
 
 ## 1. The Core (MERN + Vite)
 
-- **Frontend Framework**: React 19 (initialized via Vite)
+- **Frontend Framework**: React 19 (planned; not yet initialized)
   - *Context*: Fastest dev server, instant updates, industry standard.
 - **Backend Runtime**: Node.js
 - **Backend Framework**: Express.js
@@ -35,7 +35,7 @@
 
 - **ODM**: Mongoose
   - *Context*: Schema enforcement for FoodItem, User, Order.
-- **Authentication**: JWT (jsonwebtoken) + Bcrypt.js
+- **Authentication**: JWT (jsonwebtoken) + bcryptjs
   - *Context*: Stateless, secure authentication.
 - **File Uploads**: Multer + Cloudinary (Optional)
   - *Context*: For handling food images.
@@ -43,7 +43,7 @@
   - *Context*: Instant notifications for NGOs/recipients.
 - **Security**: cors
   - *Context*: Enabling secure cross-origin requests.
-- **Validation**: Zod / Joi (Data integrity).
+- **Validation**: express-validator (Data integrity).
 
 ## 4. DevOps & Tools
 

@@ -32,10 +32,10 @@ main (protected - production)
 ```
 
 ### Process
-1. **Create branch** from `develop` (e.g., `feature/auth`).
+1. **Create branch** from `main` (e.g., `feature/auth`).
 2. **Write code** with small, atomic commits.
 3. **Push branch** to GitHub.
-4. **Open Pull Request** to `develop` with clear description.
+4. **Open Pull Request** to `main` with clear description.
 5. **Code Review** by at least one teammate.
 6. **Merge** after approval.
 7. **Delete** feature branch after merge.

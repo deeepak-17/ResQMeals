@@ -51,11 +51,11 @@
 
 ## Git Workflow
 
-1. **Pull latest `dev`**: `git pull origin dev`
+1. **Pull latest `main`**: `git pull origin main`
 2. **Create feature branch**: `git checkout -b feature/your-module`
 3. **Make atomic commits**: `git commit -m "feat: add user model"`
 4. **Push branch**: `git push -u origin feature/your-module`
-5. **Create PR** to `dev` on GitHub
+5. **Create PR** to `main` on GitHub
 6. **After merge**: Delete feature branch
 
 **Commit Prefixes:**
@@ -103,7 +103,7 @@ Backend Tasks:
 
 Frontend Tasks (in RMFrontend):
 4. Create /login and /register pages
-5. Store JWT in localStorage
+5. Store JWT in secure, httpOnly cookies (set by backend); avoid localStorage
 6. Redirect to role-based dashboard after login
 ```
 
@@ -114,8 +114,8 @@ Branch: feature/donor
 
 Backend Tasks:
 1. Create FoodDonation model
-   - Fields: donorId, foodType, quantity, preparedTime, expiryTime, location, status
-   - Auto-calculate: expiryTime = preparedTime + 4 hours
+   - Fields: donorId, foodType, quantity, cookedAt, safetyWindow, expiryDate, location, status
+   - Auto-calculate: expiryDate = cookedAt + safetyWindow (e.g., 4 hours)
 
 2. Create Donation routes
    - POST /donations (create)

@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
-import { validationResult } from "express-validator";
+import { validationResult, matchedData } from "express-validator";
 import User from "../models/User";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { registerValidation, loginValidation } from "../middleware/validation";
@@ -38,7 +38,7 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
         return;
     }
 
-    const { name, email, password, role, organizationType } = req.body;
+    const { name, email, password, role, organizationType } = matchedData(req);
 
     try {
         let user = await User.findOne({ email });
@@ -84,7 +84,11 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
             secret,
             { expiresIn: 3600 },
             (err, token) => {
-                if (err) throw err;
+                if (err) {
+                    console.error("JWT Error:", err);
+                    res.status(500).send("Token generation failed");
+                    return;
+                }
                 res.json({ token });
             }
         );
@@ -105,7 +109,7 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
         return;
     }
 
-    const { email, password } = req.body;
+    const { email, password } = matchedData(req);
 
     try {
         const user = await User.findOne({ email });
@@ -137,7 +141,11 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
             secret,
             { expiresIn: 3600 },
             (err, token) => {
-                if (err) throw err;
+                if (err) {
+                    console.error("JWT Error:", err);
+                    res.status(500).send("Token generation failed");
+                    return;
+                }
                 res.json({ token, role: user?.role });
             }
         );

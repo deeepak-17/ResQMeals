@@ -35,7 +35,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
         const decoded = jwt.verify(token, secret) as JwtPayload;
         req.user = decoded;
         next();
-    } catch (_err) {
+    } catch {
         res.status(401).json({ message: "Token is not valid" });
     }
 };
