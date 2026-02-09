@@ -18,12 +18,30 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
 
         const latitude = parseFloat(lat as string);
         const longitude = parseFloat(lng as string);
-        const radius = parseFloat(radiusKm as string);
+        let radius = parseFloat(radiusKm as string);
 
         if (isNaN(latitude) || isNaN(longitude) || isNaN(radius)) {
             res.status(400).json({ message: "Invalid coordinates or radius" });
             return;
         }
+
+        // Validate geographic ranges
+        if (latitude < -90 || latitude > 90) {
+            res.status(400).json({ message: "Latitude must be between -90 and 90" });
+            return;
+        }
+        if (longitude < -180 || longitude > 180) {
+            res.status(400).json({ message: "Longitude must be between -180 and 180" });
+            return;
+        }
+
+        // Validate and cap radius
+        const MAX_RADIUS_KM = 50;
+        if (radius <= 0) {
+            res.status(400).json({ message: "Radius must be a positive number" });
+            return;
+        }
+        radius = Math.min(radius, MAX_RADIUS_KM);
 
         // Convert km to meters for MongoDB
         const radiusInMeters = radius * 1000;
