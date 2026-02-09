@@ -3,7 +3,7 @@ import axios from "axios";
 const API_URL = "http://localhost:5000/api/auth";
 
 const testAuth = async () => {
-    const testEmail = `test${Date.now()} @example.com`;
+    const testEmail = `test${Date.now()}@example.com`;
 
     try {
         // 1. Register User
@@ -27,10 +27,12 @@ const testAuth = async () => {
         });
         console.log("✅ Login Successful. Token received:", !!loginRes.data.token);
 
+        const loginToken = loginRes.data.token;
+
         console.log("\n3. Testing Protected Route (/me)...");
         const meRes = await axios.get(`${API_URL}/me`, {
             headers: {
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${loginToken}`
             }
         });
         console.log("✅ Protected Route Access Successful. User:", meRes.data.name);

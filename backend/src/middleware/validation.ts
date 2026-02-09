@@ -35,7 +35,12 @@ export const registerValidation: ValidationChain[] = [
     body("organizationType")
         .optional()
         .isIn(ORGANIZATION_TYPES)
-        .withMessage(`Organization type must be one of: ${ORGANIZATION_TYPES.join(", ")}`)
+        .withMessage(`Organization type must be one of: ${ORGANIZATION_TYPES.join(", ")}`),
+
+    body("organizationType")
+        .if(body("role").equals("ngo"))
+        .notEmpty()
+        .withMessage("Organization type is required for NGO accounts")
 ];
 
 // Validation rules for user login

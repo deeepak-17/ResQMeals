@@ -69,15 +69,10 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
         await user.save();
 
         const payload = {
-            user: {
-                id: user.id,
-                role: user.role,
-            },
+            id: user.id,
+            role: user.role,
         };
 
-        if (!process.env.JWT_SECRET) {
-            throw new Error("JWT_SECRET is not defined");
-        }
 
         const secret = process.env.JWT_SECRET;
         if (!secret) {
@@ -128,9 +123,8 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
         }
 
         const payload = {
-            user: {
-                id: user.id
-            }
+            id: user.id,
+            role: user.role,
         };
 
         const secret = process.env.JWT_SECRET;
@@ -158,7 +152,7 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
 // @access  Private
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const userId = req.user?.user?.id;
+        const userId = req.user?.id;
         if (!userId) {
             res.status(401).json({ message: "Invalid token payload" });
             return;

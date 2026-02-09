@@ -1,6 +1,6 @@
-#> "Fast, scalable, and modern stack focusing on real-time updates and seamless user experience."
-
 # Tech Stack Documentation
+
+> "Fast, scalable, and modern stack focusing on real-time updates and seamless user experience."
 
 ## 1. The Core (MERN + Vite)
 

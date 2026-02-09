@@ -3,10 +3,8 @@ import jwt from "jsonwebtoken";
 
 // Extend Express Request to include user
 interface JwtPayload {
-    user: {
-        id: string;
-        role: string;
-    };
+    id: string;
+    role: string;
     iat?: number;
     exp?: number;
 }
