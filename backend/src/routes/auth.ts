@@ -120,6 +120,10 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
 // @access  Private
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
+        if (!req.user) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
         const user = await User.findById(req.user.user.id).select("-password");
         res.json(user);
     } catch (err: any) {
