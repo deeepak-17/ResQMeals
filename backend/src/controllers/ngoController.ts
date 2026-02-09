@@ -81,7 +81,7 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
 export const acceptDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const ngoUserId = req.user?.user?.id;
+        const ngoUserId = req.user?.user.id;
 
         if (!ngoUserId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
@@ -142,48 +142,60 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
 /**
  * POST /api/ngo/confirm/:id
  * NGO confirms that they have picked up the donation.
+ * Uses atomic findOneAndUpdate to prevent race conditions.
  */
 export const confirmPickup = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const ngoUserId = req.user?.user?.id;
+        const ngoUserId = req.user?.user.id;
 
         if (!ngoUserId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
             return;
         }
 
-        const donation = await FoodDonation.findById(id);
+        // Atomic update: only succeeds if donation is reserved by this NGO
+        const donation = await FoodDonation.findOneAndUpdate(
+            {
+                _id: id,
+                status: "reserved",
+                reservedBy: ngoUserId
+            } as any,
+            {
+                $set: {
+                    status: "collected",
+                    collectedAt: new Date()
+                }
+            },
+            { new: true }
+        );
 
-        if (!donation) {
+        if (donation) {
+            res.json({
+                message: "Pickup confirmed successfully",
+                donation,
+            });
+            return;
+        }
+
+        // Atomic update failed - determine why
+        const existingDonation = await FoodDonation.findById(id);
+
+        if (!existingDonation) {
             res.status(404).json({ message: "Donation not found" });
             return;
         }
 
-        if (donation.status !== "reserved") {
+        if (existingDonation.status !== "reserved") {
             res.status(400).json({
-                message: `Cannot confirm pickup. Current status: ${donation.status}`
+                message: `Cannot confirm pickup. Current status: ${existingDonation.status}`
             });
             return;
         }
 
-        // Verify this NGO reserved it
-        if (donation.reservedBy?.toString() !== ngoUserId) {
-            res.status(403).json({
-                message: "You did not reserve this donation"
-            });
-            return;
-        }
+        // Must be reserved by someone else
+        res.status(403).json({ message: "You did not reserve this donation" });
 
-        // Mark as collected
-        donation.status = "collected";
-        donation.collectedAt = new Date();
-        await donation.save();
-
-        res.json({
-            message: "Pickup confirmed successfully",
-            donation,
-        });
     } catch (error: any) {
         console.error("confirmPickup error:", error.message);
         res.status(500).json({ message: "Server Error", error: error.message });
