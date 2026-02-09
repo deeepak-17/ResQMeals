@@ -66,15 +66,15 @@ router.post("/register", registerLimiter, async (req: Request, res: Response): P
             }
         };
 
-        jwt.sign(
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error("JWT_SECRET is not defined");
+
+        const token = jwt.sign(
             payload,
-            process.env.JWT_SECRET as string,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
+            secret,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' } as jwt.SignOptions
         );
+        res.json({ token });
     } catch (err: any) {
         console.error(err.message);
         res.status(500).send("Server Error");
@@ -108,15 +108,15 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
             }
         };
 
-        jwt.sign(
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error("JWT_SECRET is not defined");
+
+        const token = jwt.sign(
             payload,
-            process.env.JWT_SECRET as string,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token, role: user?.role });
-            }
+            secret,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' } as jwt.SignOptions
         );
+        res.json({ token, role: user?.role });
     } catch (err: any) {
         console.error(err.message);
         res.status(500).send("Server Error");

@@ -12,7 +12,7 @@ app.use(express.json());
 
 // Routes
 import authRoutes from "./routes/auth";
-import donationRoutes from "./routes/donation";
+import donationRoutes from "./routes/donations";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);

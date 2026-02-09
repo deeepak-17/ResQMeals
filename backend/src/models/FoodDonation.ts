@@ -6,47 +6,28 @@ export interface IFoodDonation extends Document {
     quantity: string;
     preparedTime: Date;
     expiryTime: Date;
-    location: {
-        type: string;
-        coordinates: number[];
-    };
-    status: "available" | "reserved" | "collected" | "expired";
+    location: string;
+    status: 'available' | 'claimed' | 'picked_up' | 'delivered' | 'expired';
     imageUrl?: string;
     createdAt: Date;
 }
 
-const FoodDonationSchema = new Schema<IFoodDonation>(
-    {
-        donorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-        foodType: { type: String, required: true },
-        quantity: { type: String, required: true },
-        preparedTime: { type: Date, required: true },
-        expiryTime: { type: Date },
-        location: {
-            type: { type: String, enum: ["Point"], default: "Point" },
-            coordinates: { type: [Number], required: true }, // [longitude, latitude]
-        },
-        status: {
-            type: String,
-            enum: ["available", "reserved", "collected", "expired"],
-            default: "available",
-        },
-        imageUrl: { type: String },
+const FoodDonationSchema: Schema = new Schema({
+    donorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    foodType: { type: String, required: true },
+    quantity: { type: String, required: true },
+    preparedTime: { type: Date, required: true },
+    expiryTime: { type: Date, required: true },
+    location: { type: String, required: true },
+    status: {
+        type: String,
+        enum: ['available', 'claimed', 'picked_up', 'delivered', 'expired'],
+        default: 'available'
     },
-    { timestamps: true }
-);
-
-// Auto-calculate expiryTime if not provided (default +4 hours from preparedTime)
-FoodDonationSchema.pre("save", function (next: any) {
-    const doc = this as unknown as IFoodDonation;
-    if (!doc.expiryTime && doc.preparedTime) {
-        const preparedDate = new Date(doc.preparedTime);
-        doc.expiryTime = new Date(preparedDate.getTime() + 4 * 60 * 60 * 1000); // +4 hours
-    }
-    next();
+    imageUrl: { type: String },
+    createdAt: { type: Date, default: Date.now }
 });
 
-// Index for geospatial queries
-FoodDonationSchema.index({ location: "2dsphere" });
+
 
 export default mongoose.model<IFoodDonation>("FoodDonation", FoodDonationSchema);
