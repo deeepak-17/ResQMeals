@@ -86,7 +86,7 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
             (err, token) => {
                 if (err) {
                     console.error("JWT Error:", err);
-                    res.status(500).send("Token generation failed");
+                    res.status(500).json({ message: "Token generation failed" });
                     return;
                 }
                 res.json({ token });
@@ -94,7 +94,7 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
         );
     } catch (err) {
         console.error((err as Error).message);
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -143,7 +143,7 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
             (err, token) => {
                 if (err) {
                     console.error("JWT Error:", err);
-                    res.status(500).send("Token generation failed");
+                    res.status(500).json({ message: "Token generation failed" });
                     return;
                 }
                 res.json({ token, role: user?.role });
@@ -151,7 +151,7 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
         );
     } catch (err) {
         console.error((err as Error).message);
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -174,7 +174,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promi
         res.json(user);
     } catch (err) {
         console.error("Auth Me Error:", (err as Error).message);
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error", error: (err as Error).message });
     }
 });
 

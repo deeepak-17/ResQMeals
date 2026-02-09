@@ -32,9 +32,14 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
             return;
         }
 
-        const decoded = jwt.verify(token, secret) as JwtPayload;
-        req.user = decoded;
-        next();
+        const decoded = jwt.verify(token, secret);
+
+        if (typeof decoded === 'object' && decoded !== null && 'id' in decoded && 'role' in decoded) {
+            req.user = decoded as JwtPayload;
+            next();
+        } else {
+            res.status(401).json({ message: "Invalid token structure" });
+        }
     } catch {
         res.status(401).json({ message: "Token is not valid" });
     }
