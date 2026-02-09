@@ -76,6 +76,7 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
 /**
  * POST /api/ngo/accept/:id
  * NGO claims/reserves a donation for pickup.
+ * Uses atomic findOneAndUpdate to prevent race condition double-reservations.
  */
 export const acceptDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
@@ -87,38 +88,51 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
             return;
         }
 
-        const donation = await FoodDonation.findById(id);
+        // Atomic update: only succeeds if donation is available and not expired
+        const donation = await FoodDonation.findOneAndUpdate(
+            {
+                _id: id,
+                status: "available",
+                expiryTime: { $gt: new Date() }
+            },
+            {
+                $set: {
+                    status: "reserved",
+                    reservedBy: ngoUserId,
+                    reservedAt: new Date()
+                }
+            },
+            { new: true }
+        );
 
-        if (!donation) {
-            res.status(404).json({ message: "Donation not found" });
-            return;
-        }
-
-        if (donation.status !== "available") {
-            res.status(400).json({
-                message: `Donation is not available. Current status: ${donation.status}`
+        if (donation) {
+            res.json({
+                message: "Donation accepted successfully",
+                donation,
             });
             return;
         }
 
-        // Check if expired
-        if (new Date() > donation.expiryTime) {
-            donation.status = "expired";
-            await donation.save();
-            res.status(400).json({ message: "Donation has expired" });
+        // Atomic update failed - determine why
+        const existingDonation = await FoodDonation.findById(id);
+
+        if (!existingDonation) {
+            res.status(404).json({ message: "Donation not found" });
             return;
         }
 
-        // Reserve the donation
-        donation.status = "reserved";
-        donation.reservedBy = ngoUserId;
-        donation.reservedAt = new Date();
-        await donation.save();
+        if (existingDonation.status !== "available") {
+            res.status(400).json({
+                message: `Donation is not available. Current status: ${existingDonation.status}`
+            });
+            return;
+        }
 
-        res.json({
-            message: "Donation accepted successfully",
-            donation,
-        });
+        // Must be expired
+        existingDonation.status = "expired";
+        await existingDonation.save();
+        res.status(400).json({ message: "Donation has expired" });
+
     } catch (error: any) {
         console.error("acceptDonation error:", error.message);
         res.status(500).json({ message: "Server Error", error: error.message });
