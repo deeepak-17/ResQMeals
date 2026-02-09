@@ -6,18 +6,20 @@
 |------|------|---------------|
 | Deepak | DevOps Engineer | Base Setup, CI/CD, Deployment, Real-time, NGO Backend |
 | Member 2 | Backend Developer | Authentication System |
-| Member 3 | Full Stack Developer | Donor Module |
-| Member 4 | Full Stack Developer | Volunteer Module |
-| Member 5 | Full Stack Developer | Admin Module + Matching Engine |
+| Ananya | Full-Stack Developer | Donor Module |
+| Rohan | Full-Stack Developer | Volunteer Module |
+| Vikram | Full-Stack Developer | Admin Module + Matching Engine |
 
 ---
 
 ## Git Workflow
 
 ### Branching Strategy
-```
+
+```text
 main (protected - production)
   └── develop (integration branch)
+
         ├── setup/base-config
         ├── feature/auth
         ├── feature/donor
@@ -39,10 +41,11 @@ main (protected - production)
 7. **Delete** feature branch after merge.
 
 ### Commit Convention
-```
+
+```text
 feat: add user registration API
 fix: correct JWT token expiry
-docs: update README with setup steps
+docs: update API documentation
 refactor: extract auth middleware
 ```
 

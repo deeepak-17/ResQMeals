@@ -84,7 +84,7 @@ npm run dev
 ## Your Tasks (Replace with your assignment)
 
 ### If you are Member 2 (Auth):
-```
+```text
 Branch: feature/auth
 
 Backend Tasks:
@@ -107,7 +107,7 @@ Frontend Tasks (in RMFrontend):
 ```
 
 ### If you are Member 3 (Donor):
-```
+```text
 Branch: feature/donor
 
 Backend Tasks:
@@ -127,7 +127,7 @@ Frontend Tasks:
 ```
 
 ### If you are Member 4 (Volunteer):
-```
+```text
 Branch: feature/volunteer
 
 Backend Tasks:
@@ -145,7 +145,7 @@ Frontend Tasks:
 ```
 
 ### If you are Member 5 (Admin + Matching):
-```
+```text
 Branch: feature/admin
 
 Backend Tasks:

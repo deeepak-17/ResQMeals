@@ -3,21 +3,26 @@ import axios from "axios";
 const API_URL = "http://localhost:5000/api/auth";
 
 const testAuth = async () => {
+    const testEmail = `test${Date.now()} @example.com`;
+
     try {
+        // 1. Register User
         console.log("1. Testing Registration...");
         const registerRes = await axios.post(`${API_URL}/register`, {
             name: "Test User",
-            email: `test${Date.now()}@example.com`,
+            email: testEmail,
             password: "password123",
-            role: "donor"
+            role: "donor",
+            organizationType: "individual"
         });
-        console.log("✅ Registration Successful. Token received:", !!registerRes.data.token);
+        console.log("✅ Registration Successful:", registerRes.data);
 
         const token = registerRes.data.token;
 
+        // 2. Login User
         console.log("\n2. Testing Login...");
         const loginRes = await axios.post(`${API_URL}/login`, {
-            email: registerRes.config.data ? JSON.parse(registerRes.config.data).email : "",
+            email: testEmail,
             password: "password123"
         });
         console.log("✅ Login Successful. Token received:", !!loginRes.data.token);
@@ -30,8 +35,13 @@ const testAuth = async () => {
         });
         console.log("✅ Protected Route Access Successful. User:", meRes.data.name);
 
-    } catch (error: any) {
-        console.error("❌ Test Failed:", error.response ? error.response.data : error.message);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            console.error("❌ Test Failed:", error.response?.data ?? error.message);
+        } else {
+            console.error("❌ Test Failed:", error);
+        }
+        process.exit(1);
     }
 };
 

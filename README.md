@@ -64,11 +64,17 @@ npm run dev
 | Member 4 | Volunteer Module |
 | Member 5 | Admin + Matching |
 
+## Branching Strategy
+
+- **Integration Branch**: `main` (Protected)
+- **Feature Branches**: `feature/<feature-name>`
+- **Hotfix Branches**: `hotfix/<issue-name>`
+
 ## Git Workflow
 
-1. Create feature branch from `develop`
+1. Create feature branch from `main`
 2. Make atomic commits with conventional messages
-3. Open PR to `develop`
+3. Open PR to `main`
 4. Code review and merge
 
 ## Scripts

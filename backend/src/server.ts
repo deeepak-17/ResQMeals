@@ -14,14 +14,27 @@ app.use(express.json());
 import authRoutes from "./routes/auth";
 app.use("/api/auth", authRoutes);
 
-mongoose.connect(process.env.MONGO_URI as string)
+// Connect to MongoDB
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+    console.error("MONGO_URI is not defined");
+    process.exit(1);
+}
+
+mongoose
+    .connect(MONGO_URI)
     .then(() => console.log("MongoDB connected"))
-    .catch((err) => console.log(err));
+    .catch((err) => {
+        console.error("MongoDB connection failed:", err);
+        process.exit(1);
+    });
 
 app.get("/", (req, res) => {
     res.send("ResQMeals API running");
 });
 
-app.listen(5000, () => {
-    console.log("Server running on port 5000");
+// Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });

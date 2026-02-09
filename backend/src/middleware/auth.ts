@@ -2,30 +2,42 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 // Extend Express Request to include user
-export interface AuthRequest extends Request {
-    user?: any;
+interface JwtPayload {
+    user: {
+        id: string;
+        role: string;
+    };
+    iat?: number;
+    exp?: number;
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => { // Return type void, handle response with res methods
+export interface AuthRequest extends Request {
+    user?: JwtPayload;
+}
+
+export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
+    // Get token from header
     const token = req.header("Authorization")?.replace("Bearer ", "");
 
+    // Check if not token
     if (!token) {
         res.status(401).json({ message: "No token, authorization denied" });
         return;
     }
 
+    // Verify token
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.error("JWT_SECRET is not configured");
+            res.status(500).json({ message: "Server configuration error" });
+            return;
+        }
+
+        const decoded = jwt.verify(token, secret) as JwtPayload;
         req.user = decoded;
         next();
-    } catch (err) {
-        if (err instanceof jwt.TokenExpiredError) {
-            console.error("JWT verification failed: token expired", { message: err.message });
-        } else if (err instanceof jwt.JsonWebTokenError) {
-            console.error("JWT verification failed: invalid token", { message: err.message });
-        } else {
-            console.error("JWT verification failed with unexpected error", err);
-        }
+    } catch (_err) {
         res.status(401).json({ message: "Token is not valid" });
     }
 };
