@@ -1,15 +1,20 @@
 # Tech Stack Documentation
 
+> "Fast, scalable, and modern stack focusing on real-time updates and seamless user experience."
+
 ## 1. The Core (MERN + Vite)
-- **Frontend Framework**: React 19 (initialized via Vite)
+
+- **Frontend Framework**: React 19 (planned; not yet initialized)
   - *Context*: Fastest dev server, instant updates, industry standard.
 - **Backend Runtime**: Node.js
 - **Backend Framework**: Express.js
   - *Context*: Minimalist, flexible, perfect for REST APIs.
 - **Database**: MongoDB (via MongoDB Atlas cloud)
   - *Context*: Handles unstructured data (different food types) and geospatial queries (finding nearby food) easily.
+- **Language**: TypeScript (Strict typing for reliability).
 
 ## 2. Frontend Libraries (The "Vibe" Layer)
+
 - **Styling**: Tailwind CSS v4
   - *Context*: Rapid development without context switching.
 - **Component Library**: shadcn/ui
@@ -24,11 +29,13 @@
   - *Context*: Superior error handling and interceptors compared to fetch.
 - **State Management**: React Context API
   - *Context*: Simple and sufficient for the current scope (Zustand optional).
+- **Animations**: Framer Motion (Smooth transitions).
 
 ## 3. Backend Libraries (The "Depth" Layer)
+
 - **ODM**: Mongoose
   - *Context*: Schema enforcement for FoodItem, User, Order.
-- **Authentication**: JWT (jsonwebtoken) + Bcrypt.js
+- **Authentication**: JWT (jsonwebtoken) + bcryptjs
   - *Context*: Stateless, secure authentication.
 - **File Uploads**: Multer + Cloudinary (Optional)
   - *Context*: For handling food images.
@@ -36,8 +43,10 @@
   - *Context*: Instant notifications for NGOs/recipients.
 - **Security**: cors
   - *Context*: Enabling secure cross-origin requests.
+- **Validation**: express-validator (Data integrity).
 
 ## 4. DevOps & Tools
+
 - **Version Control**: Git + GitHub (Mono-repo structure).
 - **CI/CD**: GitHub Actions (Automated testing).
 - **Testing**: Postman (API) + Vitest (Unit).

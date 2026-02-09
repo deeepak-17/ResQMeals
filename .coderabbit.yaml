@@ -14,7 +14,7 @@ early_access: false
 enable_free_tier: true
 
 reviews:
-  # Profile for review strictness: chill, assertive, or nitpicky
+  # Profile for review strictness: chill or assertive
   profile: "assertive"
   
   # Request changes workflow (approve, comment, request_changes)
@@ -76,18 +76,18 @@ reviews:
         - Technical accuracy
         - Proper formatting
 
-# Paths and patterns to ignore during review
-path_filters:
-  - "!**/*.lock"
-  - "!**/package-lock.json"
-  - "!**/node_modules/**"
-  - "!**/.git/**"
-  - "!**/*.min.js"
-  - "!**/*.min.css"
-  - "!**/dist/**"
-  - "!**/build/**"
-  - "!**/.DS_Store"
-  - "!**/coverage/**"
+  # Paths and patterns to ignore during review
+  path_filters:
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/node_modules/**"
+    - "!**/.git/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/.DS_Store"
+    - "!**/coverage/**"
 
 # Chat settings
 chat:

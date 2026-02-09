@@ -2,7 +2,7 @@
 node_modules
 dist
 *.js
-!eslint.config.mjs
+!backend/eslint.config.mjs
 
 # Backend TypeScript compiled files
 backend/**/*.js
@@ -18,6 +18,3 @@ npm-debug.log*
 
 # OS files
 .DS_Store
-
-# Internal docs (not for public repo)
-docs/

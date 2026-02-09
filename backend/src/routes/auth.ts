@@ -2,7 +2,8 @@ import express, { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
-import User, { IUser } from "../models/User";
+import { validationResult, matchedData } from "express-validator";
+import User from "../models/User";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { registerValidation, loginValidation } from "../middleware/validation";
 
@@ -29,8 +30,15 @@ const registerLimiter = rateLimit({
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post("/register", registerLimiter, async (req: Request, res: Response): Promise<void> => {
-    const { name, email, password, role, organizationType } = req.body;
+router.post("/register", registerLimiter, registerValidation, async (req: Request, res: Response): Promise<void> => {
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+    }
+
+    const { name, email, password, role, organizationType } = matchedData(req);
 
     try {
         let user = await User.findOne({ email });
@@ -77,18 +85,25 @@ router.post("/register", registerLimiter, async (req: Request, res: Response): P
         res.json({ token });
     } catch (err: any) {
         console.error(err.message);
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
 // @route   POST /api/auth/login
 // @desc    Auth user & get token
 // @access  Public
-router.post("/login", loginLimiter, async (req: Request, res: Response): Promise<void> => {
-    const { email, password } = req.body;
+router.post("/login", loginLimiter, loginValidation, async (req: Request, res: Response): Promise<void> => {
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+    }
+
+    const { email, password } = matchedData(req);
 
     try {
-        let user = await User.findOne({ email });
+        const user = await User.findOne({ email });
 
         if (!user) {
             res.status(400).json({ message: "Invalid Credentials" });
@@ -103,9 +118,8 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
         }
 
         const payload = {
-            user: {
-                id: user.id
-            }
+            id: user.id,
+            role: user.role,
         };
 
         const secret = process.env.JWT_SECRET;
@@ -119,20 +133,30 @@ router.post("/login", loginLimiter, async (req: Request, res: Response): Promise
         res.json({ token, role: user?.role });
     } catch (err: any) {
         console.error(err.message);
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
 // @route   GET /api/auth/me
-// @desc    Get logged in user
+// @desc    Get current user
 // @access  Private
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const user = await User.findById(req.user.user.id).select("-password");
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ message: "Invalid token payload" });
+            return;
+        }
+
+        const user = await User.findById(userId).select("-password");
+        if (!user) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
         res.json(user);
-    } catch (err: any) {
-        console.error(err.message);
-        res.status(500).send("Server Error");
+    } catch (err) {
+        console.error("Auth Me Error:", (err as Error).message);
+        res.status(500).json({ message: "Server Error", error: (err as Error).message });
     }
 });
 

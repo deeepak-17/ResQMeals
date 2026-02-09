@@ -1,4 +1,5 @@
 import { body, ValidationChain } from "express-validator";
+import { USER_ROLES, ORGANIZATION_TYPES } from "../constants";
 
 // Validation rules for user registration
 export const registerValidation: ValidationChain[] = [
@@ -8,7 +9,7 @@ export const registerValidation: ValidationChain[] = [
         .withMessage("Name is required")
         .isLength({ min: 2, max: 100 })
         .withMessage("Name must be between 2 and 100 characters"),
-    
+
     body("email")
         .trim()
         .notEmpty()
@@ -16,7 +17,7 @@ export const registerValidation: ValidationChain[] = [
         .isEmail()
         .withMessage("Please provide a valid email address")
         .normalizeEmail(),
-    
+
     body("password")
         .notEmpty()
         .withMessage("Password is required")
@@ -24,17 +25,22 @@ export const registerValidation: ValidationChain[] = [
         .withMessage("Password must be at least 8 characters long")
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/)
         .withMessage("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)"),
-    
+
     body("role")
         .notEmpty()
         .withMessage("Role is required")
-        .isIn(["donor", "ngo", "volunteer", "admin"])
-        .withMessage("Role must be one of: donor, ngo, volunteer, admin"),
-    
+        .isIn(USER_ROLES)
+        .withMessage(`Role must be one of: ${USER_ROLES.join(", ")}`),
+
     body("organizationType")
         .optional()
-        .isIn(["restaurant", "canteen", "event", "shelter", "individual"])
-        .withMessage("Organization type must be one of: restaurant, canteen, event, shelter, individual")
+        .isIn(ORGANIZATION_TYPES)
+        .withMessage(`Organization type must be one of: ${ORGANIZATION_TYPES.join(", ")}`),
+
+    body("organizationType")
+        .if(body("role").equals("ngo"))
+        .notEmpty()
+        .withMessage("Organization type is required for NGO accounts")
 ];
 
 // Validation rules for user login
@@ -46,7 +52,7 @@ export const loginValidation: ValidationChain[] = [
         .isEmail()
         .withMessage("Please provide a valid email address")
         .normalizeEmail(),
-    
+
     body("password")
         .notEmpty()
         .withMessage("Password is required")
