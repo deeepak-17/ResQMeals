@@ -50,4 +50,8 @@
 
 ## 4. Middleware
 - `safetyCheckMiddleware`: Auto-reject requests for expired items.
-- `roleMiddleware`: Role-specific access control (Implemented).
+- `roleMiddleware`: Role-based access control.
+    - **Source**: `src/middleware/role.ts`
+    - **Behavior**: Verifies if the authenticated user's role matches one of the allowed roles. Must be used **after** `authMiddleware`.
+    - **Usage**: `router.use(roleMiddleware('volunteer', 'admin'))`
+    - **Configuration**: accepts a list of allowed roles (e.g., `'donor'`, `'ngo'`, `'volunteer'`, `'admin'`). Returns `403 Forbidden` if role doesn't match.
