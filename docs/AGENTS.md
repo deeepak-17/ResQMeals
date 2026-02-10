@@ -114,8 +114,8 @@ Branch: feature/donor
 
 Backend Tasks:
 1. Create FoodDonation model
-   - Fields: donorId, foodType, quantity, preparedTime, expiryTime, location, status
-   - Auto-calculate: expiryTime = preparedTime + 4 hours
+   - Fields: `donorId`, `foodType`, `quantity`, `preparedTime`, `expiryTime`, `location`, `status`
+   - Auto-calculate: `expiryTime` = `preparedTime` + 4 hours
 
 2. Create Donation routes
    - POST /donations (create)

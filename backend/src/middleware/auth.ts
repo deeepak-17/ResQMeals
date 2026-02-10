@@ -13,6 +13,17 @@ export interface AuthRequest extends Request {
     user?: JwtPayload;
 }
 
+function isJwtPayload(decoded: any): decoded is JwtPayload {
+    return (
+        typeof decoded === 'object' &&
+        decoded !== null &&
+        'id' in decoded &&
+        typeof decoded.id === 'string' &&
+        'role' in decoded &&
+        typeof decoded.role === 'string'
+    );
+}
+
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
     // Get token from header
     const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -34,10 +45,11 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
         const decoded = jwt.verify(token, secret);
 
-        if (typeof decoded === 'object' && decoded !== null && 'id' in decoded && 'role' in decoded) {
-            req.user = decoded as JwtPayload;
+        if (isJwtPayload(decoded)) {
+            req.user = decoded;
             next();
         } else {
+            console.error("Invalid token structure:", decoded);
             res.status(401).json({ message: "Invalid token structure" });
         }
     } catch {

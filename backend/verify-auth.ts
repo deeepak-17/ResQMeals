@@ -17,7 +17,15 @@ const testAuth = async () => {
         });
         console.log("✅ Registration Successful:", registerRes.data);
 
-
+        const token = registerRes.data.token;
+        console.log("   Verifying Registration Token...");
+        try {
+            await axios.get(`${API_URL}/me`, { headers: { Authorization: `Bearer ${token}` } });
+            console.log("   ✅ Registration Token valid");
+        } catch (e) {
+            console.error("   ❌ Registration Token invalid");
+            throw e;
+        }
 
         // 2. Login User
         console.log("\n2. Testing Login...");
