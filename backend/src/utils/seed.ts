@@ -31,21 +31,29 @@ export const seedDatabase = async () => {
 
         // 3. Create Donations
         const donation1 = await FoodDonation.create({
-            donorId: donor._id,
+            donorId: donor._id as any,
             foodType: 'Sandwiches',
             quantity: '20 packs',
-            location: '123 Main St, Cityville',
-            expiryDate: new Date(Date.now() + 86400000), // +1 day
-            status: DonationStatus.AVAILABLE,
+            preparedTime: new Date(),
+            location: {
+                type: 'Point',
+                coordinates: [12.34, 56.78]
+            },
+            expiryTime: new Date(Date.now() + 86400000), // +1 day
+            status: 'available',
         });
 
         const donation2 = await FoodDonation.create({
-            donorId: donor._id,
+            donorId: donor._id as any,
             foodType: 'Pasta Trays',
             quantity: '5 large trays',
-            location: '456 Oak Ave, Townsville',
-            expiryDate: new Date(Date.now() + 172800000), // +2 days
-            status: DonationStatus.AVAILABLE,
+            preparedTime: new Date(),
+            location: {
+                type: 'Point',
+                coordinates: [12.35, 56.79]
+            },
+            expiryTime: new Date(Date.now() + 172800000), // +2 days
+            status: 'available',
         });
 
         // 4. Create Tasks
