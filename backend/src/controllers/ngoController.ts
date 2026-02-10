@@ -1,4 +1,5 @@
-import { Response } from "express";
+import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { AuthRequest } from "../middleware/auth";
 import FoodDonation from "../models/FoodDonation";
 
@@ -67,9 +68,13 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
             radiusKm: radius,
             donations,
         });
-    } catch (error: any) {
-        console.error("getNearbyDonations error:", error.message);
-        res.status(500).json({ message: "Server Error", error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("getNearbyDonations error:", error.message);
+        } else {
+            console.error("Unknown error in getNearbyDonations:", error);
+        }
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -81,6 +86,7 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
 export const acceptDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+        const donationId = id as string;
         const ngoUserId = req.user?.id;
 
         if (!ngoUserId) {
@@ -88,10 +94,15 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
             return;
         }
 
+        if (!mongoose.Types.ObjectId.isValid(donationId)) {
+            res.status(400).json({ message: "Invalid ID format" });
+            return;
+        }
+
         // Atomic update: only succeeds if donation is available and not expired
         const donation = await FoodDonation.findOneAndUpdate(
             {
-                _id: id,
+                _id: donationId,
                 status: "available",
                 expiryTime: { $gt: new Date() }
             },
@@ -133,9 +144,13 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
         await existingDonation.save();
         res.status(400).json({ message: "Donation has expired" });
 
-    } catch (error: any) {
-        console.error("acceptDonation error:", error.message);
-        res.status(500).json({ message: "Server Error", error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("acceptDonation error:", error.message);
+        } else {
+            console.error("Unknown error in acceptDonation:", error);
+        }
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -147,6 +162,7 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
 export const confirmPickup = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+        const donationId = id as string;
         const ngoUserId = req.user?.id;
 
         if (!ngoUserId) {
@@ -154,10 +170,15 @@ export const confirmPickup = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
+        if (!mongoose.Types.ObjectId.isValid(donationId)) {
+            res.status(400).json({ message: "Invalid ID format" });
+            return;
+        }
+
         // Atomic update: only succeeds if donation is reserved by this NGO
         const donation = await FoodDonation.findOneAndUpdate(
             {
-                _id: id,
+                _id: donationId,
                 status: "reserved",
                 reservedBy: ngoUserId
             } as any,
@@ -196,8 +217,12 @@ export const confirmPickup = async (req: AuthRequest, res: Response): Promise<vo
         // Must be reserved by someone else
         res.status(403).json({ message: "You did not reserve this donation" });
 
-    } catch (error: any) {
-        console.error("confirmPickup error:", error.message);
-        res.status(500).json({ message: "Server Error", error: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("confirmPickup error:", error.message);
+        } else {
+            console.error("Unknown error in confirmPickup:", error);
+        }
+        res.status(500).json({ message: "Server Error" });
     }
 };
