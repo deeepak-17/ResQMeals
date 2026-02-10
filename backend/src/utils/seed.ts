@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import User from '../models/User';
 import FoodDonation from '../models/FoodDonation';
 import PickupTask, { TaskStatus } from '../models/PickupTask';
+
+dotenv.config();
 
 export const seedDatabase = async () => {
     try {
@@ -39,7 +42,7 @@ export const seedDatabase = async () => {
                 type: 'Point',
                 coordinates: [12.34, 56.78]
             },
-            expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // +4 hours
+            // expiryTime not provided, should default to +4 hours
             status: 'available',
         });
 
@@ -52,7 +55,7 @@ export const seedDatabase = async () => {
                 type: 'Point',
                 coordinates: [12.35, 56.79]
             },
-            expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // +4 hours
+            expiryTime: new Date(Date.now() + 6 * 60 * 60 * 1000), // Custom: +6 hours
             status: 'available',
         });
 
@@ -78,3 +81,26 @@ export const seedDatabase = async () => {
         console.error('Error seeding database:', error);
     }
 };
+
+// Execute if run directly
+if (require.main === module) {
+    const MONGO_URI = process.env.MONGO_URI;
+    if (!MONGO_URI) {
+        console.error("MONGO_URI is not defined in .env");
+        process.exit(1);
+    }
+
+    mongoose.connect(MONGO_URI)
+        .then(() => {
+            console.log("Connected to MongoDB for seeding...");
+            return seedDatabase();
+        })
+        .then(() => {
+            mongoose.connection.close();
+            console.log("Seeding complete, connection closed.");
+        })
+        .catch(err => {
+            console.error("Seeding failed:", err);
+            process.exit(1);
+        });
+}

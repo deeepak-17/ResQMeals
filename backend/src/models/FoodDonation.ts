@@ -47,6 +47,7 @@ const FoodDonationSchema = new Schema<IFoodDonation>(
 // Auto-calculate expiryTime if not provided (default +4 hours from preparedTime)
 FoodDonationSchema.pre("save", function (next: any) {
     const doc = this as unknown as IFoodDonation;
+    // Only set default if expiryTime is NOT provided
     if (!doc.expiryTime && doc.preparedTime) {
         const preparedDate = new Date(doc.preparedTime);
         doc.expiryTime = new Date(preparedDate.getTime() + 4 * 60 * 60 * 1000); // +4 hours
