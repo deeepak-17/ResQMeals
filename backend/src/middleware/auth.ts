@@ -1,39 +1,73 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-// JWT payload structure: { user: { id: string }, role: string }
-export interface UserPayload {
-    user: {
-        id: string;
-    };
+// Extend Express Request to include user
+interface JwtPayload {
+    id: string;
     role: string;
+    iat?: number;
+    exp?: number;
 }
 
-// Extend Express Request to include typed user payload
 export interface AuthRequest extends Request {
-    user?: UserPayload;
+    user?: JwtPayload;
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => { // Return type void, handle response with res methods
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+function isJwtPayload(decoded: any): decoded is JwtPayload {
+    return (
+        typeof decoded === 'object' &&
+        decoded !== null &&
+        'id' in decoded &&
+        typeof decoded.id === 'string' &&
+        'role' in decoded &&
+        typeof decoded.role === 'string'
+    );
+}
 
+export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
+    // Get token from header
+    const authHeader = req.header("Authorization");
+
+    // Check if Authorization header exists
+    if (!authHeader) {
+        res.status(401).json({ message: "No token, authorization denied" });
+        return;
+    }
+
+    // Verify it starts with "Bearer "
+    if (!authHeader.startsWith("Bearer ")) {
+        res.status(401).json({ message: "Invalid authorization scheme" });
+        return;
+    }
+
+    // Extract and trim the token
+    const token = authHeader.slice(7).trim();
+
+    // Check if token is empty after extraction
     if (!token) {
         res.status(401).json({ message: "No token, authorization denied" });
         return;
     }
 
+    // Verify token
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as UserPayload;
-        req.user = decoded;
-        next();
-    } catch (err) {
-        if (err instanceof jwt.TokenExpiredError) {
-            console.error("JWT verification failed: token expired", { message: err.message });
-        } else if (err instanceof jwt.JsonWebTokenError) {
-            console.error("JWT verification failed: invalid token", { message: err.message });
-        } else {
-            console.error("JWT verification failed with unexpected error", err);
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.error("JWT_SECRET is not configured");
+            res.status(500).json({ message: "Server configuration error" });
+            return;
         }
+
+        const decoded = jwt.verify(token, secret);
+
+        if (isJwtPayload(decoded)) {
+            req.user = decoded;
+            next();
+        } else {
+            console.error("Invalid token structure:", decoded);
+            res.status(401).json({ message: "Invalid token structure" });
+        }
+    } catch {
         res.status(401).json({ message: "Token is not valid" });
     }
 };

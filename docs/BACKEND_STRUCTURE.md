@@ -50,4 +50,4 @@
 
 ## 4. Middleware
 - `safetyCheckMiddleware`: Auto-reject requests for expired items.
-- `roleMiddleware`: specific access (e.g., only verifies NGOs can claim).
+- `roleMiddleware`: Role-specific access control (Planned).

@@ -21,7 +21,7 @@
 - **/auth**:
     - `/login`
     - `/register`
-- **/dashboard**: User specific overview.
+- **/dashboard**: User-specific overview.
 - **/feed**: Main listing of food items.
 - **/donate**: Form to post new food.
 - **/my-pickups**: History of claimed items.
