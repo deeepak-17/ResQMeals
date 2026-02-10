@@ -1,21 +1,12 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import PickupTask, { TaskStatus } from '../models/PickupTask';
-
-// Extend Request interface to include user from auth middleware
-interface AuthRequest extends Request {
-    user?: {
-        userId: string;
-        role: string;
-    };
-}
 
 // Get all tasks assigned to the logged-in volunteer
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const volunteerId = req.user?.userId;
+        const volunteerId = req.user?.id;
 
-        // In a real app, we would populate donation details
-        // using .populate('donationId') if the FoodDonation model existed
         const tasks = await PickupTask.find({ volunteerId })
             .sort({ createdAt: -1 })
             .populate('donationId');
