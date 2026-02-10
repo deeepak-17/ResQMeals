@@ -42,7 +42,7 @@ Surplus food from restaurants, canteens, and events often goes to waste despite 
 - **Gamification**: Sustainability credits and "Green Certificates" for donors.
 
 ## 5. Security & Compliance
-- **Data Privacy**: GDPR/DPDP compliant handling of user locations and contact info.
+- **Data Privacy**: GDPR/DPDP-compliant handling of user locations and contact info.
 - **Food Safety**: Liability waivers and mandatory "Safety Window" timers (e.g., max 4 hours from cooking).
 
 ## 6. Target Users

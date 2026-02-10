@@ -14,7 +14,7 @@ early_access: false
 enable_free_tier: true
 
 reviews:
-  # Profile for review strictness: chill, assertive, or nitpicky
+  # Profile for review strictness: chill or assertive
   profile: "assertive"
   
   # Request changes workflow (approve, comment, request_changes)
@@ -50,6 +50,7 @@ reviews:
     base_branches: 
       - "main"
       - "develop"
+      - "dev"
 
   # Path-specific instructions
   path_instructions:

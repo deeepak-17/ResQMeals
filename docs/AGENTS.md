@@ -84,7 +84,8 @@ npm run dev
 ## Your Tasks (Replace with your assignment)
 
 ### If you are Member 2 (Auth):
-```
+
+```text
 Branch: feature/auth
 
 Backend Tasks:
@@ -98,16 +99,20 @@ Backend Tasks:
    - GET /auth/me (protected, return current user)
 
 3. Create authMiddleware in backend/src/middleware/auth.ts
-   - Verify JWT token from Authorization header
+   - Verify JWT token from Authorization header (or cookies for frontend)
+   - Backend should set JWT in httpOnly, Secure cookies (not just JSON response)
+   - Configure CORS with credentials: true to allow cookie transmission
 
 Frontend Tasks (in RMFrontend):
 4. Create /login and /register pages
-5. Store JWT in localStorage
-6. Redirect to role-based dashboard after login
+5. Store JWT in secure, httpOnly cookies (set by backend); avoid localStorage
+6. Ensure fetch/axios includes credentials: 'include' for cookie transmission
+7. Redirect to role-based dashboard after login
 ```
 
 ### If you are Member 3 (Donor):
-```
+
+```text
 Branch: feature/donor
 
 Backend Tasks:
@@ -127,7 +132,8 @@ Frontend Tasks:
 ```
 
 ### If you are Member 4 (Volunteer):
-```
+
+```text
 Branch: feature/volunteer
 
 Backend Tasks:
@@ -145,7 +151,8 @@ Frontend Tasks:
 ```
 
 ### If you are Member 5 (Admin + Matching):
-```
+
+```text
 Branch: feature/admin
 
 Backend Tasks:
