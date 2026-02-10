@@ -99,12 +99,15 @@ Backend Tasks:
    - GET /auth/me (protected, return current user)
 
 3. Create authMiddleware in backend/src/middleware/auth.ts
-   - Verify JWT token from Authorization header
+   - Verify JWT token from Authorization header (or cookies for frontend)
+   - Backend should set JWT in httpOnly, Secure cookies (not just JSON response)
+   - Configure CORS with credentials: true to allow cookie transmission
 
 Frontend Tasks (in RMFrontend):
 4. Create /login and /register pages
 5. Store JWT in secure, httpOnly cookies (set by backend); avoid localStorage
-6. Redirect to role-based dashboard after login
+6. Ensure fetch/axios includes credentials: 'include' for cookie transmission
+7. Redirect to role-based dashboard after login
 ```
 
 ### If you are Member 3 (Donor):

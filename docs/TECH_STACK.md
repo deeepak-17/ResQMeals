@@ -49,7 +49,7 @@
 
 - **Version Control**: Git + GitHub (Mono-repo structure).
 - **CI/CD**: GitHub Actions (Automated testing).
-- **Testing**: Postman (API) + Vitest (Unit).
+- **Testing**: Postman (API) + Jest (Unit).
 - **Deployment**:
   - **Frontend**: Vercel/Netlify.
   - **Backend**: Render/Railway.

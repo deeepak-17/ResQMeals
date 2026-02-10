@@ -170,7 +170,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promi
         res.json(user);
     } catch (err) {
         console.error("Auth Me Error:", (err as Error).message);
-        res.status(500).json({ message: "Server Error", error: (err as Error).message });
+        res.status(500).json({ message: "Server Error" });
     }
 });
 

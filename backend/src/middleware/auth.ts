@@ -26,9 +26,24 @@ function isJwtPayload(decoded: any): decoded is JwtPayload {
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
     // Get token from header
-    const token = req.header("Authorization")?.replace("Bearer ", "");
+    const authHeader = req.header("Authorization");
 
-    // Check if not token
+    // Check if Authorization header exists
+    if (!authHeader) {
+        res.status(401).json({ message: "No token, authorization denied" });
+        return;
+    }
+
+    // Verify it starts with "Bearer "
+    if (!authHeader.startsWith("Bearer ")) {
+        res.status(401).json({ message: "Invalid authorization scheme" });
+        return;
+    }
+
+    // Extract and trim the token
+    const token = authHeader.slice(7).trim();
+
+    // Check if token is empty after extraction
     if (!token) {
         res.status(401).json({ message: "No token, authorization denied" });
         return;
