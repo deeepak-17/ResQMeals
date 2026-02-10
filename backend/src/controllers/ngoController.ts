@@ -81,7 +81,7 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
 export const acceptDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const ngoUserId = req.user?.user.id;
+        const ngoUserId = req.user?.id;
 
         if (!ngoUserId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
@@ -147,7 +147,7 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
 export const confirmPickup = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const ngoUserId = req.user?.user.id;
+        const ngoUserId = req.user?.id;
 
         if (!ngoUserId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });

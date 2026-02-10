@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import User, { UserRole } from '../models/User';
-import FoodDonation, { DonationStatus } from '../models/FoodDonation';
+import User from '../models/User';
+import FoodDonation from '../models/FoodDonation';
 import PickupTask, { TaskStatus } from '../models/PickupTask';
 
 export const seedDatabase = async () => {
@@ -19,14 +19,14 @@ export const seedDatabase = async () => {
             _id: '507f1f77bcf86cd799439011',
             name: 'John Volunteer',
             email: 'volunteer@resqmeals.com',
-            role: UserRole.VOLUNTEER,
+            role: 'volunteer',
         });
 
         // 2. Create Donor
         const donor = await User.create({
             name: 'Jane Donor',
             email: 'donor@resqmeals.com',
-            role: UserRole.DONOR,
+            role: 'donor',
         });
 
         // 3. Create Donations
