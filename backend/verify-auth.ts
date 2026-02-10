@@ -17,7 +17,7 @@ const testAuth = async () => {
         });
         console.log("✅ Registration Successful:", registerRes.data);
 
-        const token = registerRes.data.token;
+
 
         // 2. Login User
         console.log("\n2. Testing Login...");

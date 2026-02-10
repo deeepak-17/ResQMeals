@@ -52,7 +52,7 @@ router.post(
             res.json(donation);
         } catch (err) {
             console.error((err as Error).message);
-            res.status(500).send("Server Error");
+            res.status(500).json({ message: "Server Error" });
         }
     }
 );
@@ -62,11 +62,11 @@ router.post(
 // @access  Private
 router.get("/my", authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const donations = await FoodDonation.find({ donorId: req.user?.id }).sort({ createdAt: -1 });
+        const donations = await FoodDonation.find({ donorId: req.user?.id as any }).sort({ createdAt: -1 });
         res.json(donations);
     } catch (err) {
         console.error((err as Error).message);
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -89,7 +89,7 @@ router.get("/:id", authMiddleware, async (req: AuthRequest, res: Response): Prom
             res.status(404).json({ message: "Donation not found" });
             return;
         }
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -120,7 +120,7 @@ router.delete("/:id", authMiddleware, async (req: AuthRequest, res: Response): P
             res.status(404).json({ message: "Donation not found" });
             return;
         }
-        res.status(500).send("Server Error");
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
