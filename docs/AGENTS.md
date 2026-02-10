@@ -51,11 +51,11 @@
 
 ## Git Workflow
 
-1. **Pull latest `main`**: `git pull origin main`
+1. **Pull latest `dev`**: `git pull origin dev`
 2. **Create feature branch**: `git checkout -b feature/your-module`
 3. **Make atomic commits**: `git commit -m "feat: add user model"`
 4. **Push branch**: `git push -u origin feature/your-module`
-5. **Create PR** to `main` on GitHub
+5. **Create PR** to `dev` on GitHub
 6. **After merge**: Delete feature branch
 
 **Commit Prefixes:**
