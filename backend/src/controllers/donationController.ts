@@ -11,7 +11,7 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
         const { foodType, quantity, preparedTime, location, imageUrl } = req.body;
 
         // TODO: remove fallback when auth is implemented
-        const donorId = req.user?.id || req.body.donorId;
+        const donorId = req.user?.id;
 
         if (!donorId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
@@ -37,7 +37,7 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
 // GET /donations/my
 export const getMyDonations = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const donorId = req.user?.id || req.query.donorId; // Fallback for testing
+        const donorId = req.user?.id;
 
         if (!donorId) {
             res.status(401).json({ message: "Unauthorized: User ID required" });
