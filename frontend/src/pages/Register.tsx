@@ -20,7 +20,15 @@ const Register = () => {
         try {
             const res = await axios.post("http://localhost:5000/api/auth/register", formData);
             login(res.data.token, formData.role);
-            navigate('/');
+
+            // Redirect based on role
+            if (formData.role === 'donor') {
+                navigate('/donor/add'); // Or /donor/dashboard if created
+            } else if (formData.role === 'ngo') {
+                navigate('/'); // Placeholder for NGO dashboard
+            } else {
+                navigate('/'); // Placeholder for volunteer dashboard
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || "Registration failed");
         }
@@ -35,24 +43,34 @@ const Register = () => {
                     type="text"
                     placeholder="Name"
                     className="w-full p-2 border mb-2"
+                    value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
                 <input
                     type="email"
                     placeholder="Email"
                     className="w-full p-2 border mb-2"
+                    value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
                 <input
                     type="password"
                     placeholder="Password"
                     className="w-full p-2 border mb-2"
+                    value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
                 <select
                     className="w-full p-2 border mb-2"
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    onChange={(e) => {
+                        const newRole = e.target.value;
+                        setFormData({
+                            ...formData,
+                            role: newRole,
+                            organizationType: newRole === 'ngo' ? formData.organizationType : ''
+                        });
+                    }}
                 >
                     <option value="donor">Donor</option>
                     <option value="ngo">NGO</option>
@@ -62,6 +80,7 @@ const Register = () => {
                 {formData.role === 'ngo' && (
                     <select
                         className="w-full p-2 border mb-4"
+                        value={formData.organizationType}
                         onChange={(e) => setFormData({ ...formData, organizationType: e.target.value })}
                     >
                         <option value="">Select Org Type</option>

@@ -1,17 +1,13 @@
 import { Request, Response } from "express";
 import FoodDonation from "../models/FoodDonation";
-
-interface AuthRequest extends Request {
-    user?: any;
-}
+import { AuthRequest } from "../middleware/auth";
 
 // POST /donations
 export const createDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { foodType, quantity, preparedTime, location, imageUrl } = req.body;
 
-        // TODO: remove fallback when auth is implemented
-        const donorId = req.user?.id || req.body.donorId;
+        const donorId = req.user?.id;
 
         if (!donorId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
@@ -37,14 +33,14 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
 // GET /donations/my
 export const getMyDonations = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const donorId = req.user?.id || req.query.donorId; // Fallback for testing
+        const donorId = req.user?.id;
 
         if (!donorId) {
             res.status(401).json({ message: "Unauthorized: User ID required" });
             return;
         }
 
-        const donations = await FoodDonation.find({ donorId }).sort({ createdAt: -1 });
+        const donations = await FoodDonation.find({ donorId: donorId as any }).sort({ createdAt: -1 });
         res.json(donations);
     } catch (error: any) {
         res.status(500).json({ message: "Server Error", error: error.message });
@@ -56,12 +52,23 @@ export const updateDonation = async (req: AuthRequest, res: Response): Promise<v
     try {
         const { id } = req.params;
         const updateData = req.body;
+        const donorId = req.user?.id;
+
+        if (!donorId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
 
         // Prevent updating critical fields directly if needed, for now allow all
-        const updatedDonation = await FoodDonation.findByIdAndUpdate(id, updateData, { new: true });
+        // Enforce ownership: donorId must match
+        const updatedDonation = await FoodDonation.findOneAndUpdate(
+            { _id: id, donorId: donorId as any },
+            updateData,
+            { new: true }
+        );
 
         if (!updatedDonation) {
-            res.status(404).json({ message: "Donation not found" });
+            res.status(404).json({ message: "Donation not found or unauthorized" });
             return;
         }
 
@@ -72,13 +79,20 @@ export const updateDonation = async (req: AuthRequest, res: Response): Promise<v
 };
 
 // DELETE /donations/:id
-export const deleteDonation = async (req: Request, res: Response): Promise<void> => {
+export const deleteDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const deletedDonation = await FoodDonation.findByIdAndDelete(id);
+        const donorId = req.user?.id;
+
+        if (!donorId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        const deletedDonation = await FoodDonation.findOneAndDelete({ _id: id, donorId: donorId as any });
 
         if (!deletedDonation) {
-            res.status(404).json({ message: "Donation not found" });
+            res.status(404).json({ message: "Donation not found or unauthorized" });
             return;
         }
 

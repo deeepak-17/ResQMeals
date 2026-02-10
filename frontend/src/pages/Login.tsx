@@ -8,15 +8,24 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
+        setError("");
         try {
             const res = await axios.post("http://localhost:5000/api/auth/login", formData);
-            login(res.data.token, res.data.role); // Assuming role is returned
+            login(res.data.token, res.data.role);
             navigate(res.data.role === 'donor' ? '/donor/add' : '/');
-        } catch (err: any) {
-            setError(err.response?.data?.message || "Login failed");
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                setError(err.response?.data?.message || "Login failed");
+            } else {
+                setError("An unexpected error occurred");
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -29,15 +38,25 @@ const Login = () => {
                     type="email"
                     placeholder="Email"
                     className="w-full p-2 border mb-2"
+                    value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={loading}
                 />
                 <input
                     type="password"
                     placeholder="Password"
                     className="w-full p-2 border mb-4"
+                    value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    disabled={loading}
                 />
-                <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded">Login</button>
+                <button
+                    type="submit"
+                    className="w-full bg-blue-500 text-white p-2 rounded disabled:bg-blue-300"
+                    disabled={loading}
+                >
+                    {loading ? "Logging in..." : "Login"}
+                </button>
                 <p className="mt-2 text-sm">
                     Don't have an account? <Link to="/register" className="text-blue-500">Register</Link>
                 </p>
