@@ -39,7 +39,7 @@ export const seedDatabase = async () => {
                 type: 'Point',
                 coordinates: [12.34, 56.78]
             },
-            expiryTime: new Date(Date.now() + 86400000), // +1 day
+            expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // +4 hours
             status: 'available',
         });
 
@@ -52,7 +52,7 @@ export const seedDatabase = async () => {
                 type: 'Point',
                 coordinates: [12.35, 56.79]
             },
-            expiryTime: new Date(Date.now() + 172800000), // +2 days
+            expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // +4 hours
             status: 'available',
         });
 
