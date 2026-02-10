@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import FoodDonation from '../models/FoodDonation';
 import PickupTask, { TaskStatus } from '../models/PickupTask';
@@ -16,12 +17,18 @@ export const seedDatabase = async () => {
 
         console.log('Seeding database...');
 
+        console.log('Seeding database...');
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash('password123', salt);
+
         // 1. Create Volunteer
         // HARDCODED ID to match authMiddleware mock
         const volunteer = await User.create({
             _id: '507f1f77bcf86cd799439011',
             name: 'John Volunteer',
             email: 'volunteer@resqmeals.com',
+            password: hashedPassword,
             role: 'volunteer',
         });
 
@@ -29,6 +36,7 @@ export const seedDatabase = async () => {
         const donor = await User.create({
             name: 'Jane Donor',
             email: 'donor@resqmeals.com',
+            password: hashedPassword,
             role: 'donor',
         });
 

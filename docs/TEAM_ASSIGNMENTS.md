@@ -17,18 +17,16 @@
 ### Branching Strategy
 
 ```text
-main (protected - production)
-  └── develop (integration branch)
-
-        ├── setup/base-config
-        ├── feature/auth
-        ├── feature/donor
-        ├── feature/ngo
-        ├── feature/volunteer
-        ├── feature/admin
-        ├── feature/matching
-        ├── feature/realtime
-        └── deploy/production
+main (integration & production)
+  ├── setup/base-config
+  ├── feature/auth
+  ├── feature/donor
+  ├── feature/ngo
+  ├── feature/volunteer
+  ├── feature/admin
+  ├── feature/matching
+  ├── feature/realtime
+  └── deploy/production
 ```
 
 ### Process

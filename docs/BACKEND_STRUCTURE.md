@@ -50,4 +50,4 @@
 
 ## 4. Middleware
 - `safetyCheckMiddleware`: Auto-reject requests for expired items.
-- `roleMiddleware`: Role-specific access control (Planned).
+- `roleMiddleware`: Role-specific access control (Implemented).

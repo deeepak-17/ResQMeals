@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { AuthRequest } from "../middleware/auth";
-import FoodDonation from "../models/FoodDonation";
+import FoodDonation, { IFoodDonation } from "../models/FoodDonation";
+
+
 
 /**
  * GET /api/ngo/donations/nearby

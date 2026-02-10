@@ -1,12 +1,14 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "./auth";
 
+import { UserRole } from "../constants";
+
 /**
  * Role-based access control middleware.
  * Checks if the authenticated user has one of the allowed roles.
  * Must be used AFTER authMiddleware.
  */
-export const roleMiddleware = (...allowedRoles: string[]) => {
+export const roleMiddleware = (...allowedRoles: UserRole[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction): void => {
         if (!req.user) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
@@ -14,8 +16,9 @@ export const roleMiddleware = (...allowedRoles: string[]) => {
         }
 
         // JWT payload structure: { user: { id: string }, role: string }
+        // JWT payload structure: { user: { id: string }, role: string }
         // Role is included at top level of the decoded token
-        const userRole = req.user.role;
+        const userRole = req.user.role as UserRole;
 
         if (!userRole || !allowedRoles.includes(userRole)) {
             // Log details server-side for debugging, don't expose in response

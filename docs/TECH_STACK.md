@@ -4,8 +4,8 @@
 
 ## 1. The Core (MERN + Vite)
 
-- **Frontend Framework**: React 19 (planned; not yet initialized)
-  - *Context*: Fastest dev server, instant updates, industry standard.
+- **Frontend Framework**: React 19
+  - *Context*: Fastest dev server, instant updates, industry standard (Latest).
 - **Backend Runtime**: Node.js
 - **Backend Framework**: Express.js
   - *Context*: Minimalist, flexible, perfect for REST APIs.

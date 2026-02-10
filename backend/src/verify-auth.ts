@@ -27,6 +27,10 @@ const testAuth = async () => {
         // Use login token (not registration token) for authenticated requests
         const token = loginRes.data.token;
 
+        if (!token) {
+            throw new Error("Login succeeded but no token returned");
+        }
+
         console.log("\n3. Testing Protected Route (/me)...");
         const meRes = await axios.get(`${API_URL}/me`, {
             headers: {
@@ -35,8 +39,17 @@ const testAuth = async () => {
         });
         console.log("✅ Protected Route Access Successful. User:", meRes.data.name);
 
-    } catch (error: any) {
-        console.error("❌ Test Failed:", error.response ? error.response.data : error.message);
+    } catch (error: unknown) {
+        if (axios.isAxiosError(error) && error.response) {
+            console.error("❌ Test Failed (API Error):", {
+                status: error.response.status,
+                data: error.response.data
+            });
+        } else if (error instanceof Error) {
+            console.error("❌ Test Failed:", error.message);
+        } else {
+            console.error("❌ Test Failed (Unknown Error):", error);
+        }
     }
 };
 

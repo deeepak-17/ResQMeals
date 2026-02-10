@@ -13,7 +13,7 @@ export interface AuthRequest extends Request {
     user?: JwtPayload;
 }
 
-function isJwtPayload(decoded: any): decoded is JwtPayload {
+function isJwtPayload(decoded: unknown): decoded is JwtPayload {
     return (
         typeof decoded === 'object' &&
         decoded !== null &&
