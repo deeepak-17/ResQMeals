@@ -1,0 +1,69 @@
+name: OpenProject Integration
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened]
+  pull_request:
+    types: [opened, closed, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  sync-to-openproject:
+    name: Sync to OpenProject
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify OpenProject on Issue Event
+        if: github.event_name == 'issues'
+        run: |
+          curl -s -X POST "${{ secrets.OPENPROJECT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "issue",
+              "action": "${{ github.event.action }}",
+              "repository": "${{ github.repository }}",
+              "issue": {
+                "number": ${{ github.event.issue.number }},
+                "title": "${{ github.event.issue.title }}",
+                "state": "${{ github.event.issue.state }}",
+                "url": "${{ github.event.issue.html_url }}",
+                "user": "${{ github.event.issue.user.login }}"
+              }
+            }'
+
+      - name: Notify OpenProject on PR Event
+        if: github.event_name == 'pull_request'
+        run: |
+          curl -s -X POST "${{ secrets.OPENPROJECT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "pull_request",
+              "action": "${{ github.event.action }}",
+              "repository": "${{ github.repository }}",
+              "pull_request": {
+                "number": ${{ github.event.pull_request.number }},
+                "title": "${{ github.event.pull_request.title }}",
+                "state": "${{ github.event.pull_request.state }}",
+                "merged": ${{ github.event.pull_request.merged || false }},
+                "url": "${{ github.event.pull_request.html_url }}",
+                "user": "${{ github.event.pull_request.user.login }}",
+                "branch": "${{ github.event.pull_request.head.ref }}"
+              }
+            }'
+
+      - name: Notify OpenProject on Comment
+        if: github.event_name == 'issue_comment'
+        run: |
+          curl -s -X POST "${{ secrets.OPENPROJECT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "comment",
+              "action": "${{ github.event.action }}",
+              "repository": "${{ github.repository }}",
+              "issue_number": ${{ github.event.issue.number }},
+              "comment": {
+                "user": "${{ github.event.comment.user.login }}",
+                "url": "${{ github.event.comment.html_url }}"
+              }
+            }'
