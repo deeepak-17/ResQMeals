@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import FoodDonation from "../models/FoodDonation";
+import { emitToUser } from "../utils/socketEvents";
 
 /**
  * GET /api/ngo/donations/nearby
@@ -106,6 +107,12 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
         );
 
         if (donation) {
+            // Notify the donor that their donation was reserved
+            emitToUser(donation.donorId.toString(), "donation:reserved", {
+                donationId: donation._id,
+                reservedBy: ngoUserId,
+            });
+
             res.json({
                 message: "Donation accepted successfully",
                 donation,
@@ -171,6 +178,12 @@ export const confirmPickup = async (req: AuthRequest, res: Response): Promise<vo
         );
 
         if (donation) {
+            // Notify the donor that pickup was confirmed
+            emitToUser(donation.donorId.toString(), "donation:collected", {
+                donationId: donation._id,
+                collectedAt: donation.collectedAt,
+            });
+
             res.json({
                 message: "Pickup confirmed successfully",
                 donation,

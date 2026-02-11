@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import FoodDonation from "../models/FoodDonation";
+import { emitToRole } from "../utils/socketEvents";
 
 interface AuthRequest extends Request {
     user?: any;
@@ -28,6 +29,10 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
         });
 
         const savedDonation = await newDonation.save();
+
+        // Notify all NGOs about the new donation
+        emitToRole("ngo", "donation:new", savedDonation);
+
         res.status(201).json(savedDonation);
     } catch (error: any) {
         res.status(500).json({ message: "Server Error", error: error.message });
@@ -65,6 +70,9 @@ export const updateDonation = async (req: AuthRequest, res: Response): Promise<v
             return;
         }
 
+        // Notify NGOs about updated donation
+        emitToRole("ngo", "donation:updated", updatedDonation);
+
         res.json(updatedDonation);
     } catch (error: any) {
         res.status(500).json({ message: "Server Error", error: error.message });
@@ -81,6 +89,9 @@ export const deleteDonation = async (req: Request, res: Response): Promise<void>
             res.status(404).json({ message: "Donation not found" });
             return;
         }
+
+        // Notify NGOs about deleted donation
+        emitToRole("ngo", "donation:deleted", { id });
 
         res.json({ message: "Donation deleted successfully" });
     } catch (error: any) {

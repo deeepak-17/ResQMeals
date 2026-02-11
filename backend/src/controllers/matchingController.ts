@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/auth";
 import User from "../models/User";
 import FoodDonation from "../models/FoodDonation";
 import PickupTask, { TaskStatus } from "../models/PickupTask";
+import { emitToUser } from "../utils/socketEvents";
 
 const MATCHING_RADIUS_KM = 5;
 
@@ -97,6 +98,12 @@ export const assignVolunteer = async (req: AuthRequest, res: Response): Promise<
         });
 
         await pickupTask.save();
+
+        // Notify the assigned volunteer in real-time
+        emitToUser(assignedVolunteer._id.toString(), "task:assigned", {
+            taskId: pickupTask._id,
+            donationId: donation._id,
+        });
 
         res.status(201).json({
             message: `Volunteer '${assignedVolunteer.name}' has been assigned to pick up this donation`,
