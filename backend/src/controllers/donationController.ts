@@ -7,16 +7,51 @@ interface AuthRequest extends Request {
 }
 
 // POST /donations
+// POST /donations
 export const createDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { foodType, quantity, preparedTime, location, imageUrl } = req.body;
+        console.log("DonationController: createDonation called. Body:", req.body);
+        console.log("DonationController: File:", req.file);
 
-        // TODO: remove fallback when auth is implemented
-        const donorId = req.user?.id || req.body.donorId;
-
+        const donorId = req.user?.id;
         if (!donorId) {
             res.status(401).json({ message: "Unauthorized: User not authenticated" });
             return;
+        }
+
+        // Parse FormData fields (multer puts them in req.body)
+        const foodType = req.body.foodType;
+        const quantityVal = req.body.quantity;
+        const unit = req.body.unit;
+        const quantity = `${quantityVal} ${unit}`; // Combine quantity + unit
+        const preparedTime = req.body.preparedAt; // Frontend sends preparedAt
+
+        // Handle location - check both structured object and flat keys
+        let lng: number, lat: number;
+
+        if (req.body.location && req.body.location.coordinates) {
+            // Already parsed as object
+            lng = parseFloat(req.body.location.coordinates[0]);
+            lat = parseFloat(req.body.location.coordinates[1]);
+        } else {
+            // Handle raw nested keys from FormData
+            lng = parseFloat(req.body['location[coordinates][0]']);
+            lat = parseFloat(req.body['location[coordinates][1]']);
+        }
+
+        console.log(`DonationController: Parsed coordinates: [${lng}, ${lat}]`);
+
+        // Construct location object
+        const location = {
+            type: "Point",
+            coordinates: [lng, lat]
+        };
+
+        // Handle image file
+        let imageUrl = '';
+        if (req.file) {
+            // accessible via http://localhost:5001/uploads/filename
+            imageUrl = `/uploads/${req.file.filename}`;
         }
 
         const newDonation = new FoodDonation({
@@ -35,6 +70,7 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
 
         res.status(201).json(savedDonation);
     } catch (error: any) {
+        console.error("Donation creation error:", error);
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 };
@@ -42,9 +78,11 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
 // GET /donations/my
 export const getMyDonations = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
+        console.log("DonationController: getMyDonations called. User:", req.user);
         const donorId = req.user?.id || req.query.donorId; // Fallback for testing
 
         if (!donorId) {
+            console.error("DonationController: No donorId found in request");
             res.status(401).json({ message: "Unauthorized: User ID required" });
             return;
         }

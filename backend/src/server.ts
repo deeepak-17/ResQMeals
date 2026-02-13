@@ -10,6 +10,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files
+import path from 'path';
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Routes
 import authRoutes from "./routes/auth";
 import donationRoutes from "./routes/donation";

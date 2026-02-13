@@ -1,13 +1,13 @@
 import express from "express";
 import { createDonation, getMyDonations, updateDonation, deleteDonation } from "../controllers/donationController";
-// import authMiddleware from "../middleware/auth"; // Member 2 will provide this
+import { upload } from "../middleware/upload";
+import { authMiddleware } from "../middleware/auth";
 
 const router = express.Router();
 
-// TODO: Add authMiddleware to these routes once available
-router.post("/", createDonation);
-router.get("/my", getMyDonations);
-router.put("/:id", updateDonation);
-router.delete("/:id", deleteDonation);
+router.post("/", authMiddleware, upload.single('image'), createDonation);
+router.get("/my", authMiddleware, getMyDonations);
+router.put("/:id", authMiddleware, updateDonation);
+router.delete("/:id", authMiddleware, deleteDonation);
 
 export default router;
