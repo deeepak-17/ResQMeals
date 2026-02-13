@@ -52,6 +52,7 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
         }
 
         const decoded = jwt.verify(token, secret);
+        console.log("AuthMiddleware: Token valid, decoded:", decoded);
 
         if (isJwtPayload(decoded)) {
             req.user = decoded;

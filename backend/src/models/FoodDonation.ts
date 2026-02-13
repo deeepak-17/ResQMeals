@@ -45,13 +45,13 @@ const FoodDonationSchema = new Schema<IFoodDonation>(
 );
 
 // Auto-calculate expiryTime if not provided (default +4 hours from preparedTime)
-FoodDonationSchema.pre("save", function (next: any) {
+// Auto-calculate expiryTime if not provided (default +4 hours from preparedTime)
+FoodDonationSchema.pre("save", async function () {
     const doc = this as unknown as IFoodDonation;
     if (!doc.expiryTime && doc.preparedTime) {
         const preparedDate = new Date(doc.preparedTime);
         doc.expiryTime = new Date(preparedDate.getTime() + 4 * 60 * 60 * 1000); // +4 hours
     }
-    next();
 });
 
 // Index for geospatial queries
