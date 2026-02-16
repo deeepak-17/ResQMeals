@@ -38,7 +38,7 @@ const UserSchema: Schema = new Schema({
         type: String,
         enum: ORGANIZATION_TYPES,
         required: function (this: IUser) {
-            return this.role === 'ngo';
+            return this.role === 'donor';
         }
     },
     createdAt: {

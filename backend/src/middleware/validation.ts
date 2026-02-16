@@ -38,10 +38,12 @@ export const registerValidation: ValidationChain[] = [
         .withMessage(`Organization type must be one of: ${ORGANIZATION_TYPES.join(", ")}`),
 
     body("organizationType")
-        .if(body("role").equals("ngo"))
+        .if(body("role").equals("donor"))
         .notEmpty()
-        .withMessage("Organization type is required for NGO accounts")
+        .withMessage("Organization type is required for donor accounts")
 ];
+
+console.log("✅ VALIDATION FILE LOADED - organizationType required for DONOR role");
 
 // Validation rules for user login
 export const loginValidation: ValidationChain[] = [
