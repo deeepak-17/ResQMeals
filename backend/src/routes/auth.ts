@@ -94,11 +94,11 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
                 res.json({
                     token,
                     user: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role,
-                        verified: user.verified,
+                        id: user?.id,
+                        name: user?.name,
+                        email: user?.email,
+                        role: user?.role,
+                        verified: user?.verified,
                     },
                 });
             }
