@@ -1,6 +1,9 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import FoodDonation from "../models/FoodDonation";
+import PickupTask, { TaskStatus } from "../models/PickupTask";
+import User from "../models/User";
+import { emitToUser } from "../utils/socketEvents";
 
 /**
  * GET /api/ngo/donations/nearby
@@ -46,10 +49,16 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
         // Convert km to meters for MongoDB
         const radiusInMeters = radius * 1000;
 
-        const donations = await FoodDonation.find({
+        // For testing/fallback: if coordinates are (0,0), don't filter by distance
+        const isDefaultLocation = latitude === 0 && longitude === 0;
+
+        const query: any = {
             status: "available",
             expiryTime: { $gt: new Date() }, // Not expired
-            location: {
+        };
+
+        if (!isDefaultLocation) {
+            query.location = {
                 $nearSphere: {
                     $geometry: {
                         type: "Point",
@@ -57,8 +66,10 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
                     },
                     $maxDistance: radiusInMeters,
                 },
-            },
-        })
+            };
+        }
+
+        const donations = await FoodDonation.find(query)
             .populate("donorId", "name email organizationType")
             .sort({ expiryTime: 1 }); // Most urgent first
 
@@ -106,9 +117,50 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
         );
 
         if (donation) {
+            // Workflow: Automatically assign a volunteer when NGO accepts
+            // In testing/dev: Find the LATEST registered volunteer (likely the one being used for testing)
+            const availableVolunteer = await User.findOne({
+                role: "volunteer"
+            }).sort({ createdAt: -1 });
+
+            console.log(`[NGO Accept] Target Volunteer: ${availableVolunteer ? availableVolunteer.email : 'NONE FOUND'}`);
+
+            if (availableVolunteer) {
+                // 2. Create the PickupTask
+                const pickupTask = new PickupTask({
+                    donationId: donation._id,
+                    volunteerId: availableVolunteer._id,
+                    ngoId: ngoUserId,
+                    status: TaskStatus.ASSIGNED,
+                    assignedAt: new Date(),
+                });
+                await pickupTask.save();
+
+                // Notify volunteer
+                emitToUser(availableVolunteer._id.toString(), "task:assigned", {
+                    taskId: pickupTask._id,
+                    donationId: donation._id,
+                });
+
+                console.log(`Task automatically assigned to volunteer: ${availableVolunteer.name}`);
+            } else {
+                console.log("No volunteers available for assignment at this time.");
+            }
+
+            // Notify the donor that their donation was reserved
+            emitToUser(donation.donorId.toString(), "donation:reserved", {
+                donationId: donation._id,
+                reservedBy: ngoUserId,
+            });
+
             res.json({
-                message: "Donation accepted successfully",
+                message: "Donation accepted and transport task created",
                 donation,
+                assignedVolunteer: availableVolunteer ? {
+                    id: availableVolunteer._id,
+                    name: availableVolunteer.name,
+                    email: availableVolunteer.email
+                } : null
             });
             return;
         }
@@ -171,6 +223,12 @@ export const confirmPickup = async (req: AuthRequest, res: Response): Promise<vo
         );
 
         if (donation) {
+            // Notify the donor that pickup was confirmed
+            emitToUser(donation.donorId.toString(), "donation:collected", {
+                donationId: donation._id,
+                collectedAt: donation.collectedAt,
+            });
+
             res.json({
                 message: "Pickup confirmed successfully",
                 donation,

@@ -11,6 +11,7 @@ export enum TaskStatus {
 export interface IPickupTask extends Document {
   donationId: mongoose.Types.ObjectId;
   volunteerId: mongoose.Types.ObjectId;
+  ngoId: mongoose.Types.ObjectId;
   status: TaskStatus;
   assignedAt: Date;
   pickedAt?: Date;
@@ -23,6 +24,7 @@ const PickupTaskSchema: Schema = new Schema(
   {
     donationId: { type: Schema.Types.ObjectId, ref: 'FoodDonation', required: true },
     volunteerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    ngoId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     status: {
       type: String,
       enum: Object.values(TaskStatus),

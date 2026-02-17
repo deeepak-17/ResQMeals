@@ -12,14 +12,14 @@ const router = express.Router();
 // Rate limiter for login endpoint - stricter limits to prevent brute force attacks
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // Limit each IP to 5 login requests per windowMs
+    max: 15, // Limit each IP to 15 login requests per windowMs
     message: "Too many login attempts from this IP, please try again after 15 minutes",
 });
 
 // Rate limiter for registration endpoint - prevent spam registrations
 const registerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 3, // Limit each IP to 3 registration requests per windowMs
+    max: 20, // Limit each IP to 20 registration requests per windowMs
     message: "Too many accounts created from this IP, please try again after an hour",
 });
 
@@ -85,7 +85,16 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
                     res.status(500).json({ message: "Token generation failed" });
                     return;
                 }
-                res.json({ token });
+                res.json({
+                    token,
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        verified: user.verified,
+                    },
+                });
             }
         );
     } catch (err) {
@@ -142,7 +151,16 @@ router.post("/login", loginLimiter, loginValidation, async (req: Request, res: R
                     res.status(500).json({ message: "Token generation failed" });
                     return;
                 }
-                res.json({ token, role: user?.role });
+                res.json({
+                    token,
+                    user: {
+                        id: user?.id,
+                        name: user?.name,
+                        email: user?.email,
+                        role: user?.role,
+                        verified: user?.verified,
+                    },
+                });
             }
         );
     } catch (err) {
@@ -167,7 +185,7 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promi
             res.status(404).json({ message: "User not found" });
             return;
         }
-        res.json(user);
+        res.json({ data: user });
     } catch (err) {
         console.error("Auth Me Error:", (err as Error).message);
         res.status(500).json({ message: "Server Error" });

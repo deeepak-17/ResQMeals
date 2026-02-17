@@ -1,16 +1,21 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import PickupTask, { TaskStatus } from '../models/PickupTask';
+import FoodDonation from '../models/FoodDonation';
+import { emitToRole, emitToUser } from '../utils/socketEvents';
 
 // Get all tasks assigned to the logged-in volunteer
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const volunteerId = req.user?.id;
+        console.log(`[Volunteer] Fetching tasks for ID: ${volunteerId}`);
 
         const tasks = await PickupTask.find({ volunteerId })
             .sort({ createdAt: -1 })
-            .populate('donationId');
+            .populate('donationId')
+            .populate('ngoId', 'name email organizationType');
 
+        console.log(`[Volunteer] Found ${tasks.length} tasks for user ${volunteerId}`);
         res.status(200).json(tasks);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching tasks', error });
@@ -36,6 +41,13 @@ export const acceptTask = async (req: AuthRequest, res: Response): Promise<void>
         task.status = TaskStatus.ACCEPTED;
         await task.save();
 
+        // Notify NGOs that the volunteer accepted
+        emitToRole('ngo', 'task:accepted', {
+            taskId: task._id,
+            volunteerId: req.user?.id,
+            donationId: task.donationId,
+        });
+
         res.status(200).json(task);
     } catch (error) {
         res.status(500).json({ message: 'Error accepting task', error });
@@ -60,6 +72,13 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
 
         task.status = TaskStatus.DECLINED;
         await task.save();
+
+        // Notify NGOs that the volunteer declined
+        emitToRole('ngo', 'task:declined', {
+            taskId: task._id,
+            volunteerId: req.user?.id,
+            donationId: task.donationId,
+        });
 
         res.status(200).json(task);
     } catch (error) {
@@ -94,6 +113,22 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
         }
 
         await task.save();
+
+        // Emit real-time events for status updates
+        if (status === TaskStatus.DELIVERED) {
+            // Notify donor and NGOs about completed delivery
+            const donation = await FoodDonation.findById(task.donationId);
+            if (donation) {
+                emitToUser(donation.donorId.toString(), 'delivery:complete', {
+                    taskId: task._id,
+                    donationId: task.donationId,
+                });
+            }
+            emitToRole('ngo', 'delivery:complete', {
+                taskId: task._id,
+                donationId: task.donationId,
+            });
+        }
 
         res.status(200).json(task);
     } catch (error) {
