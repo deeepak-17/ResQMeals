@@ -36,6 +36,12 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
 
     const { name, email, password, role, organizationType } = matchedData(req);
 
+    // Prevent admin registration — admin is a pre-seeded account only
+    if (role === "admin") {
+        res.status(403).json({ message: "Admin registration is not allowed" });
+        return;
+    }
+
     try {
         let user = await User.findOne({ email });
 
