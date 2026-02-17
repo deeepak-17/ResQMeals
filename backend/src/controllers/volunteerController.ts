@@ -8,11 +8,14 @@ import { emitToRole, emitToUser } from '../utils/socketEvents';
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const volunteerId = req.user?.id;
+        console.log(`[Volunteer] Fetching tasks for ID: ${volunteerId}`);
 
         const tasks = await PickupTask.find({ volunteerId })
             .sort({ createdAt: -1 })
-            .populate('donationId');
+            .populate('donationId')
+            .populate('ngoId', 'name email organizationType');
 
+        console.log(`[Volunteer] Found ${tasks.length} tasks for user ${volunteerId}`);
         res.status(200).json(tasks);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching tasks', error });

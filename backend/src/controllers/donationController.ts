@@ -20,6 +20,8 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
         }
 
         // Parse FormData fields (multer puts them in req.body)
+        const title = req.body.title || "Food Donation";
+        const description = req.body.description || "";
         const foodType = req.body.foodType;
         const quantityVal = req.body.quantity;
         const unit = req.body.unit;
@@ -27,24 +29,27 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
         const preparedTime = req.body.preparedAt; // Frontend sends preparedAt
 
         // Handle location - check both structured object and flat keys
-        let lng: number, lat: number;
+        let lng: number, lat: number, address: string = "";
 
         if (req.body.location && req.body.location.coordinates) {
             // Already parsed as object
             lng = parseFloat(req.body.location.coordinates[0]);
             lat = parseFloat(req.body.location.coordinates[1]);
+            address = req.body.location.address || "";
         } else {
             // Handle raw nested keys from FormData
             lng = parseFloat(req.body['location[coordinates][0]']);
             lat = parseFloat(req.body['location[coordinates][1]']);
+            address = req.body['location[address]'] || "";
         }
 
-        console.log(`DonationController: Parsed coordinates: [${lng}, ${lat}]`);
+        console.log(`DonationController: Parsed coordinates: [${lng}, ${lat}], Address: ${address}`);
 
         // Construct location object
         const location = {
             type: "Point",
-            coordinates: [lng, lat]
+            coordinates: [lng, lat],
+            address
         };
 
         // Handle image file
@@ -56,6 +61,8 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
 
         const newDonation = new FoodDonation({
             donorId,
+            title,
+            description,
             foodType,
             quantity,
             preparedTime,

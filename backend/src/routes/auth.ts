@@ -85,7 +85,16 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
                     res.status(500).json({ message: "Token generation failed" });
                     return;
                 }
-                res.json({ token });
+                res.json({
+                    token,
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        verified: user.verified,
+                    },
+                });
             }
         );
     } catch (err) {

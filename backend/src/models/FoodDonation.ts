@@ -2,13 +2,16 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IFoodDonation extends Document {
     donorId: mongoose.Schema.Types.ObjectId;
+    title: string;
+    description?: string;
     foodType: string;
     quantity: string;
     preparedTime: Date;
     expiryTime: Date;
     location: {
         type: string;
-        coordinates: number[];
+        coordinates: number[]; // [lng, lat]
+        address?: string;
     };
     status: "available" | "reserved" | "collected" | "expired";
     imageUrl?: string;
@@ -22,6 +25,8 @@ export interface IFoodDonation extends Document {
 const FoodDonationSchema = new Schema<IFoodDonation>(
     {
         donorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        title: { type: String, required: true },
+        description: { type: String },
         foodType: { type: String, required: true },
         quantity: { type: String, required: true },
         preparedTime: { type: Date, required: true },
@@ -29,6 +34,7 @@ const FoodDonationSchema = new Schema<IFoodDonation>(
         location: {
             type: { type: String, enum: ["Point"], default: "Point" },
             coordinates: { type: [Number], required: true }, // [longitude, latitude]
+            address: { type: String }
         },
         status: {
             type: String,

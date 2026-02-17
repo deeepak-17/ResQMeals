@@ -20,12 +20,14 @@ import donationRoutes from "./routes/donation";
 import ngoRoutes from "./routes/ngo";
 import adminRoutes from "./routes/admin";
 import matchingRoutes from "./routes/matching";
+import volunteerRoutes from "./routes/volunteerRoutes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/ngo", ngoRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/matching", matchingRoutes);
+app.use("/api/tasks", volunteerRoutes);
 
 // Connect to MongoDB
 const MONGO_URI = process.env.MONGO_URI;
