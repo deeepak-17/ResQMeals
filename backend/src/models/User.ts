@@ -8,6 +8,8 @@ export interface IUser extends Document {
     role: UserRole;
     verified: boolean;
     organizationType?: OrganizationType;
+    verificationDocument?: string;  // Path to uploaded document
+    documentType?: 'registration_cert' | 'tax_exemption' | 'ngo_license';
     createdAt: Date;
 }
 
@@ -40,6 +42,13 @@ const UserSchema: Schema = new Schema({
         required: function (this: IUser) {
             return this.role === 'donor';
         }
+    },
+    verificationDocument: {
+        type: String
+    },
+    documentType: {
+        type: String,
+        enum: ['registration_cert', 'tax_exemption', 'ngo_license']
     },
     createdAt: {
         type: Date,

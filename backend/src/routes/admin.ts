@@ -24,4 +24,10 @@ router.put("/users/:id/verify", verifyUser);
 // @access  Admin only
 router.put("/users/:id/block", blockUser);
 
+import { getAllDonations } from "../controllers/adminController";
+// @route   GET /api/admin/donations
+// @desc    List all donations (supports ?status=available&page=1&limit=20)
+// @access  Admin only
+router.get("/donations", getAllDonations);
+
 export default router;

@@ -128,10 +128,63 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
                 taskId: task._id,
                 donationId: task.donationId,
             });
+
+            // Trigger reassignment check for this volunteer
+            // They are now free!
+            if (req.user?.id) {
+                try {
+                    await checkAndAssignPendingTasks(req.user.id);
+                } catch (err) {
+                    console.error("Error assigning pending tasks:", err);
+                }
+            }
         }
 
         res.status(200).json(task);
     } catch (error) {
         res.status(500).json({ message: 'Error updating task status', error });
     }
+};
+
+// Internal helper to assign pending tasks to a specific volunteer
+// This is called when a volunteer becomes free (DELIVERED/DECLINED)
+// or can be called periodically
+import User from '../models/User';
+
+const checkAndAssignPendingTasks = async (volunteerId: string) => {
+    console.log(`[Scheduler] Checking pending tasks for volunteer ${volunteerId}...`);
+
+    // 1. Double check: Is this volunteer actually free?
+    const busyTasks = await PickupTask.countDocuments({
+        volunteerId,
+        status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
+    });
+
+    if (busyTasks > 0) {
+        console.log(`[Scheduler] Volunteer ${volunteerId} is still busy.`);
+        return;
+    }
+
+    // 2. Find oldest PENDING task
+    const pendingTask = await PickupTask.findOne({ status: TaskStatus.PENDING })
+        .sort({ createdAt: 1 }); // Oldest first
+
+    if (!pendingTask) {
+        console.log(`[Scheduler] No pending tasks found.`);
+        return;
+    }
+
+    // 3. Assign it
+    pendingTask.volunteerId = volunteerId as any; // Cast as any to avoid Type mismatch with Mongoose objectId vs string 
+    pendingTask.status = TaskStatus.ASSIGNED;
+    pendingTask.assignedAt = new Date();
+    await pendingTask.save();
+
+    // 4. Notify
+    emitToUser(volunteerId.toString(), "task:assigned", {
+        taskId: pendingTask._id,
+        donationId: pendingTask.donationId,
+    });
+
+    console.log(`[Scheduler] Assigned PENDING task ${pendingTask._id} to volunteer ${volunteerId}`);
 };

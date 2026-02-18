@@ -6,6 +6,35 @@ import User from "../models/User";
 import { emitToUser } from "../utils/socketEvents";
 
 /**
+ * GET /api/ngo/history
+ * Get donation history for the logged-in NGO (reserved, collected).
+ */
+export const getHistory = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const ngoUserId = req.user?.id;
+
+        if (!ngoUserId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        const donations = await FoodDonation.find({
+            $or: [
+                { reservedBy: ngoUserId },
+                { status: "collected", reservedBy: ngoUserId } // Redundant but clear
+            ]
+        })
+            .populate("donorId", "name email organizationType")
+            .sort({ updatedAt: -1 });
+
+        res.json(donations);
+    } catch (error: any) {
+        console.error("getHistory error:", error.message);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+/**
  * GET /api/ngo/donations/nearby
  * Find available donations near the NGO's location.
  * Query params: lat, lng, radiusKm (default 10)
@@ -118,15 +147,21 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
 
         if (donation) {
             // Workflow: Automatically assign a volunteer when NGO accepts
-            // In testing/dev: Find the LATEST registered volunteer (likely the one being used for testing)
+            // Find AVAILABLE volunteers (not currently busy with other tasks)
+            const busyVolunteerIds = await PickupTask.distinct("volunteerId", {
+                status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
+            });
+
             const availableVolunteer = await User.findOne({
-                role: "volunteer"
-            }).sort({ createdAt: -1 });
+                role: "volunteer",
+                verified: true,  // Only verified volunteers
+                _id: { $nin: busyVolunteerIds }  // Exclude busy volunteers
+            }).sort({ createdAt: -1 });  // Still pick latest if multiple available
 
             console.log(`[NGO Accept] Target Volunteer: ${availableVolunteer ? availableVolunteer.email : 'NONE FOUND'}`);
 
             if (availableVolunteer) {
-                // 2. Create the PickupTask
+                // 2a. Create the PickupTask (ASSIGNED)
                 const pickupTask = new PickupTask({
                     donationId: donation._id,
                     volunteerId: availableVolunteer._id,
@@ -144,11 +179,26 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
 
                 console.log(`Task automatically assigned to volunteer: ${availableVolunteer.name}`);
             } else {
-                console.log("No volunteers available for assignment at this time.");
+                console.log("No volunteers available. Creating PENDING task.");
+                // 2b. Create the PickupTask (PENDING)
+                const pickupTask = new PickupTask({
+                    donationId: donation._id,
+                    volunteerId: undefined, // Explicitly undefined
+                    ngoId: ngoUserId,
+                    status: TaskStatus.PENDING,
+                });
+                await pickupTask.save();
+                console.log(`Task ${pickupTask._id} queued as PENDING`);
             }
 
             // Notify the donor that their donation was reserved
-            emitToUser(donation.donorId.toString(), "donation:reserved", {
+            // ✅ MOVED OUTSIDE: This now runs regardless of volunteer assignment
+            const donorIdStr = donation.donorId.toString();
+            console.log(`📢 Emitting 'donation:reserved' to donor ${donorIdStr}`);
+            console.log(`   - Donation ID: ${donation._id}`);
+            console.log(`   - Reserved By: ${ngoUserId}`);
+
+            emitToUser(donorIdStr, "donation:reserved", {
                 donationId: donation._id,
                 reservedBy: ngoUserId,
             });

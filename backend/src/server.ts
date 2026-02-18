@@ -2,10 +2,18 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import { createServer } from "http";
+import { initializeSocket } from "./socket";
 
 dotenv.config();
 
 const app = express();
+
+// Create HTTP server for Socket.io
+const server = createServer(app);
+
+// Initialize Socket.io
+initializeSocket(server);
 
 app.use(cors());
 app.use(express.json());
@@ -48,8 +56,8 @@ app.get("/", (req, res) => {
     res.send("ResQMeals API running");
 });
 
-// Start server
+// Start server (use HTTP server instead of app.listen for Socket.io)
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

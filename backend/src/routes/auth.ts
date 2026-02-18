@@ -6,6 +6,41 @@ import { validationResult, matchedData } from "express-validator";
 import User from "../models/User";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { registerValidation, loginValidation } from "../middleware/validation";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure Multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = "uploads/verification";
+        // Ensure directory exists
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        // Create unique filename: user-timestamp-originalExt
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, "ngo-" + uniqueSuffix + path.extname(file.originalname));
+    },
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const filetypes = /jpeg|jpg|png|pdf/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error("Only images (jpeg, jpg, png) and PDFs are allowed!"));
+    },
+});
 
 const router = express.Router();
 
@@ -26,7 +61,8 @@ const registerLimiter = rateLimit({
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post("/register", registerLimiter, registerValidation, async (req: Request, res: Response): Promise<void> => {
+// NOTE: upload.single must run BEFORE validation so req.body is populated
+router.post("/register", registerLimiter, upload.single('verificationDocument'), registerValidation, async (req: Request, res: Response): Promise<void> => {
     // Check validation results
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -41,6 +77,11 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
         res.status(403).json({ message: "Admin registration is not allowed" });
         return;
     }
+
+    // DEBUG LOGS
+    console.log("📝 Register Request Received");
+    console.log("   - Body:", req.body);
+    console.log("   - File:", req.file);
 
     try {
         let user = await User.findOne({ email });
@@ -62,7 +103,9 @@ router.post("/register", registerLimiter, registerValidation, async (req: Reques
             // review or a dedicated verification flow) before being marked as
             // verified in the system. They are therefore created as unverified
             // here and handled by that workflow.
-            verified: role === 'donor'
+            verified: role === 'donor',
+            verificationDocument: req.file ? req.file.path : undefined,
+            documentType: req.body.documentType
         });
 
         const salt = await bcrypt.genSalt(10);

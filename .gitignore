@@ -21,3 +21,9 @@ npm-debug.log*
 
 # OpenProject sync script (contains secrets)
 scripts/sync-to-openproject.sh
+
+# Utility scripts (local use only)
+backend/src/utils/checkUsers.ts
+
+# Documentation (not tracked)
+docs/ARCHITECTURE.md
