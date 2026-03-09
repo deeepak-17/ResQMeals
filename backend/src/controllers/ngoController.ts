@@ -68,7 +68,7 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
         }
 
         // Validate and cap radius
-        const MAX_RADIUS_KM = 50;
+        const MAX_RADIUS_KM = 5000;
         if (radius <= 0) {
             res.status(400).json({ message: "Radius must be a positive number" });
             return;
@@ -78,15 +78,18 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
         // Convert km to meters for MongoDB
         const radiusInMeters = radius * 1000;
 
-        // For testing/fallback: if coordinates are (0,0), don't filter by distance
+        // Skip geo filter if: (1) coords are (0,0) default, or (2) radius >= 5000 ("show all" mode)
         const isDefaultLocation = latitude === 0 && longitude === 0;
+        const isShowAll = radius >= 5000;
+
+        console.log(`[NGO Nearby] Fetching: lat=${latitude}, lng=${longitude}, radius=${radiusKm}, isShowAll=${isShowAll}`);
 
         const query: any = {
             status: "available",
-            expiryTime: { $gt: new Date() }, // Not expired
+            // expiryTime: { $gt: new Date() }, // Temporary commented for debugging
         };
 
-        if (!isDefaultLocation) {
+        if (!isDefaultLocation && !isShowAll) {
             query.location = {
                 $nearSphere: {
                     $geometry: {
@@ -98,9 +101,13 @@ export const getNearbyDonations = async (req: AuthRequest, res: Response): Promi
             };
         }
 
+        console.log(`[NGO Nearby] Mongo Query: ${JSON.stringify(query)}`);
+
         const donations = await FoodDonation.find(query)
             .populate("donorId", "name email organizationType")
-            .sort({ expiryTime: 1 }); // Most urgent first
+            .sort({ createdAt: -1 }); // Newest first for debugging
+
+        console.log(`[NGO Nearby] Found ${donations.length} available donations`);
 
         res.json({
             count: donations.length,
@@ -146,19 +153,43 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
         );
 
         if (donation) {
-            // Workflow: Automatically assign a volunteer when NGO accepts
-            // Find AVAILABLE volunteers (not currently busy with other tasks)
-            const busyVolunteerIds = await PickupTask.distinct("volunteerId", {
-                status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
-            });
-
-            const availableVolunteer = await User.findOne({
+            // USER STORY 4.2, 4.3, 4.5: Find available volunteers with Load Balancing
+            const donationLocation = donation.location.coordinates;
+            const nearbyVolunteers = await User.find({
                 role: "volunteer",
-                verified: true,  // Only verified volunteers
-                _id: { $nin: busyVolunteerIds }  // Exclude busy volunteers
-            }).sort({ createdAt: -1 });  // Still pick latest if multiple available
+                verified: true,
+                location: {
+                    $nearSphere: {
+                        $geometry: { type: "Point", coordinates: donationLocation },
+                        $maxDistance: 5000, // 5km
+                    },
+                },
+            }).limit(10); // Check top 10 nearest
 
-            console.log(`[NGO Accept] Target Volunteer: ${availableVolunteer ? availableVolunteer.email : 'NONE FOUND'}`);
+            let availableVolunteer = null;
+            let volunteersToConsider = nearbyVolunteers;
+
+            // Fallback: If no volunteers within 5km, consider ALL verified volunteers
+            if (nearbyVolunteers.length === 0) {
+                console.log('[NGO Accept] No volunteers within 5km. Falling back to all verified volunteers...');
+                const allVolunteers = await User.find({ role: "volunteer", verified: true }).select("-password");
+                volunteersToConsider = allVolunteers;
+            }
+
+            if (volunteersToConsider.length > 0) {
+                // Load Balancing: Get active task counts
+                const volunteerScores = await Promise.all(volunteersToConsider.map(async (v) => {
+                    const activeTasks = await PickupTask.countDocuments({
+                        volunteerId: v._id,
+                        status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
+                    });
+                    return { volunteer: v, activeTasks };
+                }));
+                volunteerScores.sort((a, b) => a.activeTasks - b.activeTasks);
+                availableVolunteer = volunteerScores[0].volunteer;
+            }
+
+            console.log(`[NGO Accept] Target Volunteer: ${availableVolunteer ? availableVolunteer.email : 'NONE FOUND (queuing as PENDING)'}`);
 
             if (availableVolunteer) {
                 // 2a. Create the PickupTask (ASSIGNED)

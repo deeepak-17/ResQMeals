@@ -17,6 +17,9 @@ export interface IPickupTask extends Document {
   assignedAt?: Date;
   pickedAt?: Date;
   deliveredAt?: Date;
+  feedback?: string;
+  rating?: number;
+  priority?: 'Normal' | 'High';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +37,9 @@ const PickupTaskSchema: Schema = new Schema(
     assignedAt: { type: Date },
     pickedAt: { type: Date },
     deliveredAt: { type: Date },
+    feedback: { type: String },
+    rating: { type: Number, min: 1, max: 5 },
+    priority: { type: String, enum: ['Normal', 'High'], default: 'Normal' },
   },
   { timestamps: true }
 );

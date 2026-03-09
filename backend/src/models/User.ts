@@ -10,6 +10,15 @@ export interface IUser extends Document {
     organizationType?: OrganizationType;
     verificationDocument?: string;  // Path to uploaded document
     documentType?: 'registration_cert' | 'tax_exemption' | 'ngo_license';
+    location?: {
+        type: string;
+        coordinates: number[]; // [lng, lat]
+        address?: string;
+    };
+    isAvailable: boolean;
+    sustainabilityCredits: number;
+    totalDeliveries: number;
+    totalDistance: number;
     createdAt: Date;
 }
 
@@ -50,10 +59,34 @@ const UserSchema: Schema = new Schema({
         type: String,
         enum: ['registration_cert', 'tax_exemption', 'ngo_license']
     },
+    location: {
+        type: { type: String, enum: ["Point"] },
+        coordinates: { type: [Number] }, // [longitude, latitude]
+        address: { type: String }
+    },
+    isAvailable: {
+        type: Boolean,
+        default: true,
+    },
+    sustainabilityCredits: {
+        type: Number,
+        default: 0,
+    },
+    totalDeliveries: {
+        type: Number,
+        default: 0,
+    },
+    totalDistance: {
+        type: Number,
+        default: 0,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
     },
 });
+
+// Index for geospatial queries
+UserSchema.index({ location: "2dsphere" });
 
 export default mongoose.model<IUser>("User", UserSchema);
