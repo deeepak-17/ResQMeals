@@ -1,5 +1,5 @@
 import express from "express";
-import { getNearbyDonations, acceptDonation, confirmPickup, getHistory } from "../controllers/ngoController";
+import { getNearbyDonations, acceptDonation, confirmPickup, getHistory, submitTaskFeedback, getTasks } from "../controllers/ngoController";
 import { authMiddleware } from "../middleware/auth";
 import { roleMiddleware } from "../middleware/role";
 
@@ -15,10 +15,16 @@ router.get("/donations/nearby", getNearbyDonations);
 // GET /api/ngo/history - Get reservation/collection history
 router.get("/history", getHistory);
 
+// GET /api/ngo/tasks - Get NGO tasks
+router.get("/tasks", getTasks);
+
 // POST /api/ngo/accept/:id - Claim a donation
 router.post("/accept/:id", acceptDonation);
 
 // POST /api/ngo/confirm/:id - Confirm pickup
 router.post("/confirm/:id", confirmPickup);
+
+// POST /api/ngo/tasks/:id/feedback - NGO submits feedback for delivered task
+router.post("/tasks/:id/feedback", submitTaskFeedback);
 
 export default router;
