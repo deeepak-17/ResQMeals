@@ -4,6 +4,7 @@ import PickupTask, { TaskStatus } from '../models/PickupTask';
 import FoodDonation from '../models/FoodDonation';
 import User from '../models/User';
 import { emitToRole, emitToUser } from '../utils/socketEvents';
+import { updateVolunteerReliability } from '../utils/scoring';
 
 // Get all tasks assigned to the logged-in volunteer
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -46,6 +47,13 @@ export const acceptTask = async (req: AuthRequest, res: Response): Promise<void>
         }
 
         task.status = TaskStatus.ACCEPTED;
+        // User Story 5.3: Chain-of-Custody Tracking
+        task.history.push({
+            status: TaskStatus.ACCEPTED,
+            timestamp: new Date(),
+            updatedBy: req.user?.id as any,
+            note: "Task accepted by volunteer"
+        });
         await task.save();
 
         // Notify NGOs that the volunteer accepted
@@ -78,7 +86,25 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
         }
 
         task.status = TaskStatus.DECLINED;
+        // User Story 5.3: Chain-of-Custody Tracking
+        task.history.push({
+            status: TaskStatus.DECLINED,
+            timestamp: new Date(),
+            updatedBy: req.user?.id as any,
+            note: "Task declined by volunteer"
+        });
         await task.save();
+
+        // User Story 5.4: Volunteer Reliability Scoring
+        if (req.user?.id) {
+            const volunteer = await User.findById(req.user.id);
+            if (volunteer) {
+                // If they decline, we don't naturally increment totalAssigned if it already was incremented at assignment.
+                // But we should recalculate current reliability score.
+                volunteer.reliabilityScore = updateVolunteerReliability(volunteer);
+                await volunteer.save();
+            }
+        }
 
         // USER STORY 4.6 — Automatic Reassignment
         console.log(`[Volunteer] Task ${id} declined. Triggering automatic reassignment...`);
@@ -126,12 +152,46 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
 
         // Update status and timestamps
         task.status = status;
+        const now = new Date();
+
+        // Find the donation to sync status
+        const donation = await FoodDonation.findById(task.donationId);
+
         if (status === TaskStatus.PICKED) {
-            task.pickedAt = new Date();
+            task.pickedAt = now;
+            // User Story 5.3: Chain-of-Custody Tracking
+            task.history.push({
+                status: TaskStatus.PICKED,
+                timestamp: now,
+                updatedBy: req.user?.id as any,
+                note: "Food picked up from donor"
+            });
+
+            // Sync with Donation model for the "Donation Journey" timeline
+            if (donation) {
+                donation.status = "collected";
+                donation.collectedAt = now;
+                await donation.save();
+            }
         } else if (status === TaskStatus.DELIVERED) {
-            task.deliveredAt = new Date();
+            task.deliveredAt = now;
             if (feedback) task.feedback = feedback;
             if (rating) task.rating = rating;
+
+            // User Story 5.3: Chain-of-Custody Tracking
+            task.history.push({
+                status: TaskStatus.DELIVERED,
+                timestamp: now,
+                updatedBy: req.user?.id as any,
+                note: `Food delivered to NGO. User Story 5.8 feedback: ${feedback || 'None'}`
+            });
+
+            // Ensure donation is marked as collected if it wasn't already
+            if (donation && donation.status !== 'collected') {
+                donation.status = "collected";
+                donation.collectedAt = donation.collectedAt || now;
+                await donation.save();
+            }
         }
 
         await task.save();
@@ -155,13 +215,18 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
             // They are now free!
             if (req.user?.id) {
                 // USER STORY 3.8 — Award 10 sustainability credits and update performance
-                await User.findByIdAndUpdate(req.user.id, {
-                    $inc: {
-                        sustainabilityCredits: 10,
-                        totalDeliveries: 1,
-                        totalDistance: 5 // Simulated 5km per delivery
-                    }
-                });
+                // USER STORY 5.4 — Reliability update
+                const volunteer = await User.findById(req.user.id);
+                if (volunteer) {
+                    volunteer.sustainabilityCredits += 10;
+                    volunteer.totalDeliveries += 1;
+                    volunteer.totalDistance += 5; // Sim
+
+                    // US 5.4 implementation
+                    volunteer.completedTasks += 1;
+                    volunteer.reliabilityScore = updateVolunteerReliability(volunteer);
+                    await volunteer.save();
+                }
 
                 try {
                     await checkAndAssignPendingTasks(req.user.id);
@@ -307,7 +372,21 @@ const checkAndAssignPendingTasks = async (volunteerId: string) => {
     taskToAssign.volunteerId = volunteerId as any;
     taskToAssign.status = TaskStatus.ASSIGNED;
     taskToAssign.assignedAt = new Date();
+    // User Story 5.3: Chain-of-Custody Tracking
+    taskToAssign.history.push({
+        status: TaskStatus.ASSIGNED,
+        timestamp: new Date(),
+        updatedBy: volunteerId as any,
+        note: `Task assigned automatically by scheduler to volunteer`
+    });
     await taskToAssign.save();
+
+    // User Story 5.4: Volunteer Reliability Scoring
+    if (volunteer) {
+        volunteer.totalAssignedTasks += 1;
+        volunteer.reliabilityScore = updateVolunteerReliability(volunteer);
+        await volunteer.save();
+    }
 
     // 5. Notify
     emitToUser(volunteerId.toString(), "task:assigned", {

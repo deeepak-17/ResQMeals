@@ -20,6 +20,14 @@ export interface IPickupTask extends Document {
   feedback?: string;
   rating?: number;
   priority?: 'Normal' | 'High';
+  // User Story 5.3: Chain-of-Custody Tracking
+  history: Array<{
+    status: TaskStatus;
+    timestamp: Date;
+    updatedBy?: mongoose.Types.ObjectId;
+    location?: { coordinates: number[] };
+    note?: string;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +48,16 @@ const PickupTaskSchema: Schema = new Schema(
     feedback: { type: String },
     rating: { type: Number, min: 1, max: 5 },
     priority: { type: String, enum: ['Normal', 'High'], default: 'Normal' },
+    // User Story 5.3: Chain-of-Custody Tracking
+    history: [
+      {
+        status: { type: String, enum: Object.values(TaskStatus) },
+        timestamp: { type: Date, default: Date.now },
+        updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        location: { coordinates: [Number] },
+        note: { type: String },
+      },
+    ],
   },
   { timestamps: true }
 );

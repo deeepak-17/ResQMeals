@@ -6,6 +6,31 @@ import User from "../models/User";
 import { emitToUser } from "../utils/socketEvents";
 
 /**
+ * GET /api/ngo/tasks
+ * Get all pickup tasks for the logged-in NGO.
+ */
+export const getTasks = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const ngoUserId = req.user?.id;
+
+        if (!ngoUserId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        const tasks = await PickupTask.find({ ngoId: ngoUserId })
+            .populate("donationId")
+            .populate("volunteerId", "name email reliabilityScore averageRating")
+            .sort({ createdAt: -1 });
+
+        res.json(tasks);
+    } catch (error: any) {
+        console.error("getTasks error:", error.message);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+/**
  * GET /api/ngo/history
  * Get donation history for the logged-in NGO (reserved, collected).
  */
@@ -23,7 +48,7 @@ export const getHistory = async (req: AuthRequest, res: Response): Promise<void>
                 { reservedBy: ngoUserId },
                 { status: "collected", reservedBy: ngoUserId } // Redundant but clear
             ]
-        })
+        } as any)
             .populate("donorId", "name email organizationType")
             .sort({ updatedAt: -1 });
 
@@ -199,8 +224,21 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
                     ngoId: ngoUserId,
                     status: TaskStatus.ASSIGNED,
                     assignedAt: new Date(),
+                    priority: donation.isHighRisk ? 'High' : 'Normal',
+                    // User Story 5.3: Chain-of-Custody Tracking
+                    history: [{
+                        status: TaskStatus.ASSIGNED,
+                        timestamp: new Date(),
+                        updatedBy: ngoUserId as any,
+                        note: `Task assigned automatically to volunteer ${availableVolunteer.name}`
+                    }]
                 });
                 await pickupTask.save();
+
+                // User Story 5.4: Volunteer Reliability Scoring
+                await User.findByIdAndUpdate(availableVolunteer._id, {
+                    $inc: { totalAssignedTasks: 1 }
+                });
 
                 // Notify volunteer
                 emitToUser(availableVolunteer._id.toString(), "task:assigned", {
@@ -217,6 +255,14 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
                     volunteerId: undefined, // Explicitly undefined
                     ngoId: ngoUserId,
                     status: TaskStatus.PENDING,
+                    priority: donation.isHighRisk ? 'High' : 'Normal',
+                    // User Story 5.3: Chain-of-Custody Tracking
+                    history: [{
+                        status: TaskStatus.PENDING,
+                        timestamp: new Date(),
+                        updatedBy: ngoUserId as any,
+                        note: "Task created and queued as PENDING (no volunteers available)"
+                    }]
                 });
                 await pickupTask.save();
                 console.log(`Task ${pickupTask._id} queued as PENDING`);
@@ -337,6 +383,85 @@ export const confirmPickup = async (req: AuthRequest, res: Response): Promise<vo
 
     } catch (error: any) {
         console.error("confirmPickup error:", error.message);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
+
+/**
+ * POST /api/ngo/tasks/:id/feedback
+ * NGO submits feedback and rating for a delivered task.
+ * User Story 5.5 & 5.8
+ */
+export const submitTaskFeedback = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { rating, feedback } = req.body;
+        const ngoUserId = req.user?.id;
+
+        if (!ngoUserId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        if (!rating || rating < 1 || rating > 5) {
+            res.status(400).json({ message: "Invalid rating. Must be between 1 and 5." });
+            return;
+        }
+
+        const task = await PickupTask.findOne({
+            _id: id,
+            ngoId: ngoUserId,
+            status: TaskStatus.DELIVERED
+        });
+
+        if (!task) {
+            res.status(404).json({ message: "Delivered task not found or already rated." });
+            return;
+        }
+
+        // Update task with feedback
+        task.rating = rating;
+        task.feedback = feedback;
+
+        // User Story 5.8: Close the feedback loop by updating the 'delivered' history note
+        const deliveryEntry = task.history.reverse().find(h => h.status === TaskStatus.DELIVERED);
+        if (deliveryEntry) {
+            deliveryEntry.note = `Food delivered to NGO. Ratings: ${rating} ★. Feedback: "${feedback || 'Excellent service!'}"`;
+        } else {
+            // Fallback: If no delivery entry found, add a new history step
+            task.history.push({
+                status: TaskStatus.DELIVERED,
+                timestamp: new Date(),
+                updatedBy: ngoUserId as any,
+                note: `NGO provided feedback: ${rating} Stars. "${feedback || 'No comments'}"`
+            });
+        }
+
+        // Reverse back to maintain original chronological order
+        task.history.reverse();
+
+        await task.save();
+
+        // Update volunteer performance (User Story 5.5)
+        if (task.volunteerId) {
+            const volunteer = await User.findById(task.volunteerId);
+            if (volunteer) {
+                const currentTotal = volunteer.totalRatings || 0;
+                const currentAvg = volunteer.averageRating || 0;
+
+                // New average = ((old_avg * old_count) + new_rating) / (old_count + 1)
+                const newTotal = currentTotal + 1;
+                const newAvg = ((currentAvg * currentTotal) + rating) / newTotal;
+
+                volunteer.averageRating = Number(newAvg.toFixed(2));
+                volunteer.totalRatings = newTotal;
+                await volunteer.save();
+            }
+        }
+
+        res.json({ message: "Feedback submitted successfully", task });
+    } catch (error: any) {
+        console.error("submitTaskFeedback error:", error.message);
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 };

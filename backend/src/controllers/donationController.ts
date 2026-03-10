@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import FoodDonation from "../models/FoodDonation";
 import { emitToRole } from "../utils/socketEvents";
+import { calculateRiskScore, checkEmergencyMode } from "../utils/scoring";
 
 interface AuthRequest extends Request {
     user?: any;
@@ -69,6 +70,32 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
             location,
             imageUrl,
         });
+
+        // 🚨 Pre-save risk check (User Story 5.1, 5.2, 5.6, 5.7)
+        // If expiryTime wasn't provided, the model schema 'pre-save' will set it
+        // but we need it NOW to calculate risk. Let's do it manually if needed.
+        if (!newDonation.expiryTime) {
+            const preparedDate = new Date(preparedTime);
+            newDonation.expiryTime = new Date(preparedDate.getTime() + 4 * 60 * 60 * 1000); // Default +4 hours
+        }
+
+        const riskAssessment = calculateRiskScore(newDonation as any);
+        newDonation.riskScore = riskAssessment.score;
+        newDonation.riskFactors = riskAssessment.factors;
+        newDonation.isHighRisk = riskAssessment.isHighRisk;
+        newDonation.emergencyMode = checkEmergencyMode(newDonation.expiryTime);
+
+        // User Story 5.2: Automatic Donation Blocking
+        // If risk is critical (> 95), block immediately
+        if (newDonation.riskScore >= 95) {
+            console.log(`[Risk Manager] Blocking donation: Score ${newDonation.riskScore}. Factors: ${newDonation.riskFactors.join(', ')}`);
+            res.status(400).json({
+                message: "Predictive Safety Alert: This donation has a critically high risk score and cannot be accepted.",
+                riskScore: newDonation.riskScore,
+                riskFactors: newDonation.riskFactors
+            });
+            return;
+        }
 
         const savedDonation = await newDonation.save();
 
