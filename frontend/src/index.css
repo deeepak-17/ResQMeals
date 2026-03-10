@@ -1,0 +1,303 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Google Fonts ────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ─── Design Tokens ───────────────────────────────── */
+:root {
+  --color-primary: #059669;
+  /* emerald-600 */
+  --color-secondary: #f97316;
+  /* orange-500 */
+  --color-background: #f8fafc;
+  /* slightly blueish neutral */
+  --color-surface: #ffffff;
+  --glow-primary: rgba(5, 150, 105, 0.35);
+  --glow-secondary: rgba(249, 115, 22, 0.3);
+}
+
+/* ─── Base Reset ──────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-background);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0f4f8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--color-primary), var(--color-secondary));
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* ─── Glassmorphism ───────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Gradient Text ───────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-animated {
+  background: linear-gradient(270deg, #059669, #10b981, #f97316, #fb923c, #059669);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 5s ease infinite;
+}
+
+/* ─── Shimmer Button Effect ───────────────────────── */
+.btn-shimmer {
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.25) 40%,
+      rgba(255, 255, 255, 0.45) 50%,
+      rgba(255, 255, 255, 0.25) 60%,
+      transparent 100%);
+  background-size: 200% 100%;
+  background-position: -200% center;
+  animation: shimmer 1.5s ease-in-out;
+}
+
+/* ─── Decorative Background Blobs ─────────────────── */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.18;
+  animation: blob 9s infinite;
+  pointer-events: none;
+}
+
+.blob-emerald {
+  background: radial-gradient(circle, #10b981, #059669);
+}
+
+.blob-orange {
+  background: radial-gradient(circle, #fb923c, #f97316);
+  animation-delay: 3s;
+}
+
+.blob-teal {
+  background: radial-gradient(circle, #2dd4bf, #0d9488);
+  animation-delay: 6s;
+}
+
+/* ─── Status Badge Pulse ──────────────────────────── */
+@keyframes pulse-available {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.45);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(5, 150, 105, 0);
+  }
+}
+
+.animate-pulse-available {
+  animation: pulse-available 2s infinite;
+}
+
+/* ─── Custom Keyframes (for non-Tailwind usage) ───── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes blob {
+
+  0%,
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(24px, -24px) scale(1.08);
+  }
+
+  66% {
+    transform: translate(-18px, 18px) scale(0.95);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ─── Scroll Reveal Helper ────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s ease-out, transform 0.65s ease-out;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-32px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-right {
+  opacity: 0;
+  transform: translateX(32px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ─── Stagger Delays ──────────────────────────────── */
+.stagger-1 {
+  transition-delay: 0.1s;
+  animation-delay: 0.1s;
+}
+
+.stagger-2 {
+  transition-delay: 0.2s;
+  animation-delay: 0.2s;
+}
+
+.stagger-3 {
+  transition-delay: 0.3s;
+  animation-delay: 0.3s;
+}
+
+.stagger-4 {
+  transition-delay: 0.4s;
+  animation-delay: 0.4s;
+}
+
+.stagger-5 {
+  transition-delay: 0.5s;
+  animation-delay: 0.5s;
+}
+
+.stagger-6 {
+  transition-delay: 0.6s;
+  animation-delay: 0.6s;
+}
+
+/* ─── Card Hover Lift ─────────────────────────────── */
+.card-hover {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -8px rgba(5, 150, 105, 0.15),
+    0 8px 16px -4px rgba(0, 0, 0, 0.08);
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+/* ─── Input Focus Glow ────────────────────────────── */
+.input-glow:focus {
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+/* ─── Gradient Border ─────────────────────────────── */
+.gradient-border-top {
+  border-top: 2px solid;
+  border-image: linear-gradient(90deg, #059669, #f97316) 1;
+}
+
+/* ─── Ripple Effect ───────────────────────────────── */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.ripple:active::after {
+  opacity: 1;
+}

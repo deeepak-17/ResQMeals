@@ -1,0 +1,682 @@
+{
+    "info": {
+        "_postman_id": "resqmeals-donor-api-v1",
+        "name": "ResQMeals Donor API",
+        "description": "Complete API collection for the ResQMeals donor workflow.\n\n## Setup\n1. Set `baseUrl` variable to `http://localhost:5001/api`\n2. Run **Login** first — the `token` variable is auto-set by the test script\n3. All protected endpoints use `{{token}}` in the Authorization header\n\n## Donor Workflow\n1. Register as donor → Login → Get profile\n2. Create a food donation (multipart/form-data)\n3. View your donations\n4. Update or delete a donation",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:5001/api",
+            "type": "string",
+            "description": "Base URL of the ResQMeals backend API"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string",
+            "description": "JWT token — auto-set after Login request"
+        },
+        {
+            "key": "donationId",
+            "value": "",
+            "type": "string",
+            "description": "Donation ID — set manually after creating a donation"
+        }
+    ],
+    "item": [
+        {
+            "name": "Auth",
+            "description": "Authentication endpoints for donor registration, login, and profile.",
+            "item": [
+                {
+                    "name": "Register as Donor",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "name",
+                                    "value": "John Donor",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "email",
+                                    "value": "john.donor@example.com",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "password",
+                                    "value": "SecurePass123!",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "role",
+                                    "value": "donor",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Register a new donor account. Donors are auto-verified on registration."
+                    },
+                    "response": [
+                        {
+                            "name": "201 Created — Donor registered",
+                            "status": "Created",
+                            "code": 201,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"John Donor\",\n    \"email\": \"john.donor@example.com\",\n    \"role\": \"donor\",\n    \"verified\": true\n  }\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "400 Bad Request — User already exists",
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"User already exists\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "400 Bad Request — Validation error",
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"errors\": [\n    { \"msg\": \"Please include a valid email\", \"path\": \"email\" },\n    { \"msg\": \"Password must be at least 6 characters\", \"path\": \"password\" }\n  ]\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "if (pm.response.code === 201 || pm.response.code === 200) {",
+                                    "    const json = pm.response.json();",
+                                    "    if (json.token) pm.collectionVariables.set('token', json.token);",
+                                    "    pm.test('Registration successful', () => pm.response.to.have.status(201));",
+                                    "    pm.test('Token returned', () => pm.expect(json.token).to.be.a('string'));",
+                                    "    pm.test('User role is donor', () => pm.expect(json.user.role).to.equal('donor'));",
+                                    "    pm.test('Donor is auto-verified', () => pm.expect(json.user.verified).to.be.true);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"john.donor@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticate and receive a JWT token. The token is automatically saved to the `token` collection variable."
+                    },
+                    "response": [
+                        {
+                            "name": "200 OK — Login successful",
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"John Donor\",\n    \"email\": \"john.donor@example.com\",\n    \"role\": \"donor\",\n    \"verified\": true\n  }\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "400 Bad Request — Invalid credentials",
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Invalid Credentials\"\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Login successful', () => pm.response.to.have.status(200));",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Token returned', () => pm.expect(json.token).to.be.a('string'));",
+                                    "pm.test('User role is donor', () => pm.expect(json.user.role).to.equal('donor'));",
+                                    "// Auto-save token for subsequent requests",
+                                    "pm.collectionVariables.set('token', json.token);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get My Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/auth/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Get the currently authenticated user's profile. Requires a valid JWT token."
+                    },
+                    "response": [
+                        {
+                            "name": "200 OK — Profile returned",
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"data\": {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"name\": \"John Donor\",\n    \"email\": \"john.donor@example.com\",\n    \"role\": \"donor\",\n    \"verified\": true,\n    \"createdAt\": \"2026-01-15T10:00:00.000Z\"\n  }\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "401 Unauthorized — No token",
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"No token, authorization denied\"\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Profile returned', () => pm.response.to.have.status(200));",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Data field present', () => pm.expect(json.data).to.be.an('object'));",
+                                    "pm.test('Password not exposed', () => pm.expect(json.data.password).to.be.undefined);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Donations",
+            "description": "CRUD endpoints for food donations. All require authentication (Bearer token).",
+            "item": [
+                {
+                    "name": "Create Donation",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "title",
+                                    "value": "Leftover Biryani",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "description",
+                                    "value": "Fresh biryani from a wedding event",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "foodType",
+                                    "value": "Cooked Meal",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "quantity",
+                                    "value": "50",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "unit",
+                                    "value": "plates",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "preparedAt",
+                                    "value": "2026-01-15T10:00:00Z",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "location[coordinates][0]",
+                                    "value": "80.2707",
+                                    "type": "text",
+                                    "description": "Longitude"
+                                },
+                                {
+                                    "key": "location[coordinates][1]",
+                                    "value": "13.0827",
+                                    "type": "text",
+                                    "description": "Latitude"
+                                },
+                                {
+                                    "key": "location[address]",
+                                    "value": "Anna Nagar, Chennai",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "image",
+                                    "type": "file",
+                                    "src": [],
+                                    "description": "Optional food image (JPEG/PNG, max 5MB)"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/donations",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "donations"
+                            ]
+                        },
+                        "description": "Create a new food donation. Uses multipart/form-data to support optional image upload.\n\n**Location format:** Send as flat FormData keys `location[coordinates][0]` (longitude) and `location[coordinates][1]` (latitude).\n\n**Quantity:** Send `quantity` (number) and `unit` (string) separately — backend combines them as `\"50 plates\"`.\n\n**Expiry:** Automatically calculated as preparedAt + 4 hours."
+                    },
+                    "response": [
+                        {
+                            "name": "201 Created — Donation created",
+                            "status": "Created",
+                            "code": 201,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d2\",\n  \"donorId\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n  \"title\": \"Leftover Biryani\",\n  \"description\": \"Fresh biryani from a wedding event\",\n  \"foodType\": \"Cooked Meal\",\n  \"quantity\": \"50 plates\",\n  \"preparedTime\": \"2026-01-15T10:00:00.000Z\",\n  \"expiryTime\": \"2026-01-15T14:00:00.000Z\",\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [80.2707, 13.0827],\n    \"address\": \"Anna Nagar, Chennai\"\n  },\n  \"status\": \"available\",\n  \"imageUrl\": \"/uploads/food-1705312800000-123456789.jpg\",\n  \"createdAt\": \"2026-01-15T10:05:00.000Z\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "401 Unauthorized — Not authenticated",
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Unauthorized: User not authenticated\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "500 Server Error",
+                            "status": "Internal Server Error",
+                            "code": 500,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Server Error\",\n  \"error\": \"...\"\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Donation created', () => pm.response.to.have.status(201));",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Has _id', () => pm.expect(json._id).to.be.a('string'));",
+                                    "pm.test('Status is available', () => pm.expect(json.status).to.equal('available'));",
+                                    "pm.test('ExpiryTime is 4h after preparedTime', () => {",
+                                    "    const prepared = new Date(json.preparedTime).getTime();",
+                                    "    const expiry = new Date(json.expiryTime).getTime();",
+                                    "    pm.expect(expiry - prepared).to.equal(4 * 60 * 60 * 1000);",
+                                    "});",
+                                    "// Save for subsequent requests",
+                                    "pm.collectionVariables.set('donationId', json._id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get My Donations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/donations/my",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "donations",
+                                "my"
+                            ]
+                        },
+                        "description": "Retrieve all donations created by the authenticated donor, sorted by newest first."
+                    },
+                    "response": [
+                        {
+                            "name": "200 OK — Donations list",
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "[\n  {\n    \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d2\",\n    \"donorId\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n    \"title\": \"Leftover Biryani\",\n    \"foodType\": \"Cooked Meal\",\n    \"quantity\": \"50 plates\",\n    \"status\": \"available\",\n    \"expiryTime\": \"2026-01-15T14:00:00.000Z\",\n    \"location\": {\n      \"type\": \"Point\",\n      \"coordinates\": [80.2707, 13.0827],\n      \"address\": \"Anna Nagar, Chennai\"\n    },\n    \"createdAt\": \"2026-01-15T10:05:00.000Z\"\n  }\n]",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "401 Unauthorized",
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Unauthorized: User ID required\"\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Returns 200', () => pm.response.to.have.status(200));",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Response is an array', () => pm.expect(json).to.be.an('array'));",
+                                    "if (json.length > 0) {",
+                                    "    pm.test('Each item has _id and status', () => {",
+                                    "        json.forEach(d => {",
+                                    "            pm.expect(d._id).to.be.a('string');",
+                                    "            pm.expect(['available','reserved','collected','expired']).to.include(d.status);",
+                                    "        });",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Donation",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Leftover Biryani (Updated)\",\n  \"quantity\": \"40 plates\",\n  \"description\": \"Updated description — some was consumed\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/donations/{{donationId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "donations",
+                                "{{donationId}}"
+                            ]
+                        },
+                        "description": "Update an existing donation. Only the owner can update their donation. Cannot update donations with status `collected` or `expired`."
+                    },
+                    "response": [
+                        {
+                            "name": "200 OK — Donation updated",
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"_id\": \"64f1a2b3c4d5e6f7a8b9c0d2\",\n  \"title\": \"Leftover Biryani (Updated)\",\n  \"quantity\": \"40 plates\",\n  \"status\": \"available\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "403 Forbidden — Not the owner",
+                            "status": "Forbidden",
+                            "code": 403,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Unauthorized: You can only edit your own donations\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "400 Bad Request — Already collected/expired",
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Cannot edit donations that are already collected or expired\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "404 Not Found",
+                            "status": "Not Found",
+                            "code": 404,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Donation not found\"\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Update successful', () => pm.response.to.have.status(200));",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Updated quantity reflected', () => pm.expect(json.quantity).to.equal('40 plates'));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Delete Donation",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/donations/{{donationId}}",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "donations",
+                                "{{donationId}}"
+                            ]
+                        },
+                        "description": "Delete a donation. Only the owner can delete their donation. Cannot delete donations with status `collected`."
+                    },
+                    "response": [
+                        {
+                            "name": "200 OK — Donation deleted",
+                            "status": "OK",
+                            "code": 200,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Donation deleted successfully\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "403 Forbidden — Not the owner",
+                            "status": "Forbidden",
+                            "code": 403,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Unauthorized: You can only delete your own donations\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "400 Bad Request — Already collected",
+                            "status": "Bad Request",
+                            "code": 400,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Cannot delete a donation that has already been collected. Please contact support.\"\n}",
+                            "_postman_previewlanguage": "json"
+                        },
+                        {
+                            "name": "404 Not Found",
+                            "status": "Not Found",
+                            "code": 404,
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                }
+                            ],
+                            "body": "{\n  \"message\": \"Donation not found\"\n}",
+                            "_postman_previewlanguage": "json"
+                        }
+                    ],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Delete successful', () => pm.response.to.have.status(200));",
+                                    "const json = pm.response.json();",
+                                    "pm.test('Success message returned', () => pm.expect(json.message).to.equal('Donation deleted successfully'));"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
