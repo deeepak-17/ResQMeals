@@ -28,6 +28,10 @@ app.get('/api/volunteer/tasks', mockAuth, volunteerController.getMyTasks);
 app.post('/api/volunteer/tasks/:id/accept', mockAuth, volunteerController.acceptTask);
 app.post('/api/volunteer/tasks/:id/decline', mockAuth, volunteerController.declineTask);
 app.patch('/api/volunteer/tasks/:id/status', mockAuth, volunteerController.updateTaskStatus);
+app.get('/api/volunteer/tasks/available', mockAuth, volunteerController.getAvailableTasks);
+app.put('/api/volunteer/tasks/:id/live-location', mockAuth, volunteerController.updateLiveLocation);
+app.post('/api/volunteer/tasks/:id/emergency', mockAuth, volunteerController.triggerEmergencyReassign);
+app.get('/api/volunteer/tasks/performance', mockAuth, volunteerController.getMyPerformanceStats);
 
 describe('Volunteer Controller', () => {
     beforeEach(() => {
@@ -76,8 +80,8 @@ describe('Volunteer Controller', () => {
                 save: jest.fn().mockResolvedValue(true)
             };
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
-            // FoodDonation.findById returns null = no expiry check needed
-            (FoodDonation.findById as jest.Mock).mockResolvedValue(null);
+            // FoodDonation.findById expected to return expiryTime
+            (FoodDonation.findById as jest.Mock).mockResolvedValue({ _id: 'donation1', expiryTime: new Date(Date.now() + 100000).toISOString() });
 
             const response = await request(app).post('/api/volunteer/tasks/task1/accept');
 
@@ -185,6 +189,7 @@ describe('Volunteer Controller', () => {
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
             (FoodDonation.findById as jest.Mock).mockResolvedValue(mockDonation);
             (User.findById as jest.Mock).mockResolvedValue(mockVolunteer);
+            // Mocking countDocuments for checkAndAssignPendingTasks
             (PickupTask.countDocuments as jest.Mock).mockResolvedValue(0);
 
             const response = await request(app)
@@ -194,6 +199,74 @@ describe('Volunteer Controller', () => {
             expect(response.status).toBe(200);
             expect(mockTask.status).toBe(TaskStatus.DELIVERED);
             expect(socketEvents.emitToUser).toHaveBeenCalledWith('donor123', 'delivery:complete', expect.any(Object));
+        });
+    });
+
+    describe('getAvailableTasks', () => {
+        it('should return available tasks based on location', async () => {
+            const mockTasks = [{ _id: 'task2', status: TaskStatus.PENDING, donation: {}, ngo: {} }];
+            (PickupTask.aggregate as jest.Mock).mockResolvedValue(mockTasks);
+
+            const response = await request(app).get('/api/volunteer/tasks/available').query({ lat: 12.97, lng: 77.59 });
+
+            expect(response.status).toBe(200);
+            expect(response.body.length).toBe(1);
+            expect(PickupTask.aggregate).toHaveBeenCalled();
+        });
+    });
+
+    describe('updateLiveLocation', () => {
+        it('should update task location and emit event', async () => {
+            const mockTask = {
+                _id: 'task1',
+                donationId: 'donation1',
+                ngoId: 'ngo1',
+                save: jest.fn().mockResolvedValue(true)
+            };
+            (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
+            (FoodDonation.findById as jest.Mock).mockResolvedValue({ donorId: 'donor1' });
+
+            const response = await request(app).put('/api/volunteer/tasks/task1/live-location').send({ lat: 12.9, lng: 77.5 });
+
+            expect(response.status).toBe(200);
+            expect(mockTask.save).toHaveBeenCalled();
+            expect(socketEvents.emitToUser).toHaveBeenCalledWith('donor1', 'task:location_update', expect.any(Object));
+            expect(socketEvents.emitToUser).toHaveBeenCalledWith('ngo1', 'task:location_update', expect.any(Object));
+        });
+    });
+
+    describe('triggerEmergencyReassign', () => {
+        it('should mark task as emergency and broadcast', async () => {
+            const mockTask = {
+                _id: 'task1',
+                status: TaskStatus.ASSIGNED,
+                save: jest.fn().mockResolvedValue(true),
+                history: []
+            };
+            (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
+
+            const response = await request(app).post('/api/volunteer/tasks/task1/emergency');
+
+            expect(response.status).toBe(200);
+            expect((mockTask as any).isEmergency).toBe(true);
+            expect(socketEvents.emitToRole).toHaveBeenCalledWith('volunteer', 'task:emergency', expect.any(Object));
+        });
+    });
+
+    describe('acceptTask time window validation', () => {
+        it('should reject accepting an expired pickup task', async () => {
+            const mockTask = {
+                _id: 'task1',
+                status: TaskStatus.ASSIGNED,
+                pickupWindowEnd: new Date(Date.now() - 100000).toISOString(),
+                save: jest.fn()
+            };
+            (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
+
+            const response = await request(app).post('/api/volunteer/tasks/task1/accept');
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toContain('expired');
         });
     });
 });

@@ -20,6 +20,16 @@ export interface IPickupTask extends Document {
   feedback?: string;
   rating?: number;
   priority?: 'Normal' | 'High';
+  // Volunteer Epic fields
+  pickupWindowStart?: Date;
+  pickupWindowEnd?: Date;
+  liveLocation?: {
+    coordinates: number[]; // [lng, lat]
+    updatedAt: Date;
+  };
+  isEmergency?: boolean;
+  emergencyAt?: Date;
+  missedPickup?: boolean;
   // User Story 5.3: Chain-of-Custody Tracking
   history: Array<{
     status: TaskStatus;
@@ -48,6 +58,16 @@ const PickupTaskSchema: Schema = new Schema(
     feedback: { type: String },
     rating: { type: Number, min: 1, max: 5 },
     priority: { type: String, enum: ['Normal', 'High'], default: 'Normal' },
+    // Volunteer Epic fields
+    pickupWindowStart: { type: Date },
+    pickupWindowEnd: { type: Date },
+    liveLocation: {
+      coordinates: { type: [Number] },
+      updatedAt: { type: Date }
+    },
+    isEmergency: { type: Boolean, default: false },
+    emergencyAt: { type: Date },
+    missedPickup: { type: Boolean, default: false },
     // User Story 5.3: Chain-of-Custody Tracking
     history: [
       {

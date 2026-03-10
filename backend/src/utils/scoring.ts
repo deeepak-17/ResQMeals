@@ -82,3 +82,23 @@ export const checkEmergencyMode = (expiryTime: Date): boolean => {
     const minutesToExpiry = (new Date(expiryTime).getTime() - now.getTime()) / (1000 * 60);
     return minutesToExpiry > 0 && minutesToExpiry < 120; // < 2 hours
 };
+
+/**
+ * Volunteer Epic: Calculate Performance Badge
+ */
+export const calculateBadge = (user: IUser): string => {
+    const { reliabilityScore, completedTasks } = user;
+    if (completedTasks >= 50 && reliabilityScore >= 95) return "Legend";
+    if (completedTasks >= 20 && reliabilityScore >= 90) return "Top Rated";
+    if (completedTasks >= 5 && reliabilityScore >= 80) return "Reliable";
+    return "Newcomer";
+};
+
+/**
+ * Volunteer Epic: Calculate On-Time Rate
+ */
+export const calculateOnTimeRate = (user: IUser): number => {
+    const totalPickups = user.onTimePickups + user.latePickups;
+    if (totalPickups === 0) return 100;
+    return Math.round((user.onTimePickups / totalPickups) * 100);
+};

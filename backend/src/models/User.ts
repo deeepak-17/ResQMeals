@@ -19,6 +19,10 @@ export interface IUser extends Document {
     sustainabilityCredits: number;
     totalDeliveries: number;
     totalDistance: number;
+    // Volunteer Epic: Performance tracking
+    onTimePickups: number;
+    latePickups: number;
+    averageDeliveryTimeMin: number;
     // User Story 5.4: Volunteer Reliability Scoring
     reliabilityScore: number;
     completedTasks: number;
@@ -83,6 +87,19 @@ const UserSchema: Schema = new Schema({
         default: 0,
     },
     totalDistance: {
+        type: Number,
+        default: 0,
+    },
+    // Volunteer Epic: Performance tracking
+    onTimePickups: {
+        type: Number,
+        default: 0,
+    },
+    latePickups: {
+        type: Number,
+        default: 0,
+    },
+    averageDeliveryTimeMin: {
         type: Number,
         default: 0,
     },
