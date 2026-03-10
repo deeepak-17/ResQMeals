@@ -15,7 +15,14 @@ const server = createServer(app);
 // Initialize Socket.io
 initializeSocket(server);
 
-app.use(cors());
+const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL, "http://localhost:5173"]
+    : ["http://localhost:5173"];
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
 app.use(express.json());
 
 // Serve uploaded files
