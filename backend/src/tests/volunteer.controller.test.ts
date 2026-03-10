@@ -3,12 +3,17 @@ import express from 'express';
 import * as volunteerController from '../controllers/volunteerController';
 import PickupTask, { TaskStatus } from '../models/PickupTask';
 import FoodDonation from '../models/FoodDonation';
+import User from '../models/User';
 import * as socketEvents from '../utils/socketEvents';
 
 // Mock the models and utils
 jest.mock('../models/PickupTask');
 jest.mock('../models/FoodDonation');
+jest.mock('../models/User');
 jest.mock('../utils/socketEvents');
+jest.mock('../utils/scoring', () => ({
+    updateVolunteerReliability: jest.fn().mockReturnValue(1.0),
+}));
 
 const app = express();
 app.use(express.json());
@@ -67,9 +72,12 @@ describe('Volunteer Controller', () => {
                 _id: 'task1',
                 status: TaskStatus.ASSIGNED,
                 donationId: 'donation1',
+                history: [],
                 save: jest.fn().mockResolvedValue(true)
             };
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
+            // FoodDonation.findById returns null = no expiry check needed
+            (FoodDonation.findById as jest.Mock).mockResolvedValue(null);
 
             const response = await request(app).post('/api/volunteer/tasks/task1/accept');
 
@@ -86,7 +94,7 @@ describe('Volunteer Controller', () => {
         });
 
         it('should return 400 if task is not in ASSIGNED state', async () => {
-            const mockTask = { _id: 'task1', status: TaskStatus.ACCEPTED };
+            const mockTask = { _id: 'task1', status: TaskStatus.ACCEPTED, history: [] };
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
 
             const response = await request(app).post('/api/volunteer/tasks/task1/accept');
@@ -101,9 +109,24 @@ describe('Volunteer Controller', () => {
                 _id: 'task1',
                 status: TaskStatus.ASSIGNED,
                 donationId: 'donation1',
+                history: [],
                 save: jest.fn().mockResolvedValue(true)
             };
+            const mockVolunteer = {
+                reliabilityScore: 1,
+                totalAssignedTasks: 1,
+                completedTasks: 0,
+                save: jest.fn().mockResolvedValue(true)
+            };
+            const mockDonation = {
+                _id: 'donation1',
+                status: 'reserved',
+                save: jest.fn().mockResolvedValue(true)
+            };
+
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
+            (User.findById as jest.Mock).mockResolvedValue(mockVolunteer);
+            (FoodDonation.findById as jest.Mock).mockResolvedValue(mockDonation);
 
             const response = await request(app).post('/api/volunteer/tasks/task1/decline');
 
@@ -118,9 +141,17 @@ describe('Volunteer Controller', () => {
             const mockTask = {
                 _id: 'task1',
                 status: TaskStatus.ACCEPTED,
+                donationId: 'donation1',
+                history: [],
+                save: jest.fn().mockResolvedValue(true)
+            };
+            const mockDonation = {
+                _id: 'donation1',
+                status: 'reserved',
                 save: jest.fn().mockResolvedValue(true)
             };
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
+            (FoodDonation.findById as jest.Mock).mockResolvedValue(mockDonation);
 
             const response = await request(app)
                 .patch('/api/volunteer/tasks/task1/status')
@@ -136,13 +167,24 @@ describe('Volunteer Controller', () => {
                 _id: 'task1',
                 status: TaskStatus.PICKED,
                 donationId: 'donation1',
+                history: [],
                 save: jest.fn().mockResolvedValue(true)
             };
-            const mockDonation = { _id: 'donation1', donorId: 'donor123' };
+            const mockDonation = { _id: 'donation1', donorId: 'donor123', status: 'collected', save: jest.fn() };
+            const mockVolunteer = {
+                sustainabilityCredits: 0,
+                totalDeliveries: 0,
+                totalDistance: 0,
+                completedTasks: 0,
+                totalAssignedTasks: 1,
+                reliabilityScore: 1,
+                location: null, // No location = checkAndAssignPendingTasks exits early
+                save: jest.fn().mockResolvedValue(true)
+            };
 
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
             (FoodDonation.findById as jest.Mock).mockResolvedValue(mockDonation);
-            // Mocking countDocuments for checkAndAssignPendingTasks
+            (User.findById as jest.Mock).mockResolvedValue(mockVolunteer);
             (PickupTask.countDocuments as jest.Mock).mockResolvedValue(0);
 
             const response = await request(app)

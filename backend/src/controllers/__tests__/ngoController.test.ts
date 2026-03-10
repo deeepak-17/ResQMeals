@@ -71,7 +71,12 @@ describe('NGO Controller', () => {
             const mockDonation = {
                 _id: 'donation123',
                 donorId: 'donor123',
-                status: 'reserved'
+                status: 'reserved',
+                isHighRisk: false,
+                location: {
+                    type: 'Point',
+                    coordinates: [20, 10]
+                }
             };
 
             const mockVolunteer = {
@@ -83,16 +88,20 @@ describe('NGO Controller', () => {
             // Mock findOneAndUpdate success
             (FoodDonation.findOneAndUpdate as jest.Mock).mockResolvedValue(mockDonation);
 
-            // Mock Volunteer search
-            (PickupTask.distinct as jest.Mock).mockResolvedValue(['busyVolId']);
-
-            // Mock User.findOne chain
-            (User.findOne as jest.Mock).mockReturnValue({
-                sort: jest.fn().mockResolvedValue(mockVolunteer)
+            // Mock User.find().limit() — returns array of nearby volunteers
+            (User.find as jest.Mock).mockReturnValue({
+                limit: jest.fn().mockResolvedValue([mockVolunteer]),
+                select: jest.fn().mockResolvedValue([mockVolunteer]),
             } as any);
 
-            // Mock PickupTask save
-            const mockSave = jest.fn();
+            // Mock PickupTask.countDocuments for load balancing per volunteer
+            (PickupTask.countDocuments as jest.Mock).mockResolvedValue(0);
+
+            // Mock User.findByIdAndUpdate for incrementing totalAssignedTasks
+            (User.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockVolunteer);
+
+            // Mock PickupTask constructor + save
+            const mockSave = jest.fn().mockResolvedValue(true);
             (PickupTask as unknown as jest.Mock).mockImplementation(() => ({
                 save: mockSave,
                 _id: 'task123'
@@ -106,7 +115,7 @@ describe('NGO Controller', () => {
                 { new: true }
             );
 
-            expect(User.findOne).toHaveBeenCalled();
+            expect(User.find).toHaveBeenCalled();
             expect(mockSave).toHaveBeenCalled(); // Task saved
             expect(socketEvents.emitToUser).toHaveBeenCalled(); // Notify volunteer & donor
 
