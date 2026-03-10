@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import FoodDonation from "../models/FoodDonation";
 import { emitToRole } from "../utils/socketEvents";
+import { calculateRiskScore, checkEmergencyMode } from "../utils/scoring";
 
 interface AuthRequest extends Request {
     user?: any;
@@ -70,6 +71,32 @@ export const createDonation = async (req: AuthRequest, res: Response): Promise<v
             imageUrl,
         });
 
+        // 🚨 Pre-save risk check (User Story 5.1, 5.2, 5.6, 5.7)
+        // If expiryTime wasn't provided, the model schema 'pre-save' will set it
+        // but we need it NOW to calculate risk. Let's do it manually if needed.
+        if (!newDonation.expiryTime) {
+            const preparedDate = new Date(preparedTime);
+            newDonation.expiryTime = new Date(preparedDate.getTime() + 4 * 60 * 60 * 1000); // Default +4 hours
+        }
+
+        const riskAssessment = calculateRiskScore(newDonation as any);
+        newDonation.riskScore = riskAssessment.score;
+        newDonation.riskFactors = riskAssessment.factors;
+        newDonation.isHighRisk = riskAssessment.isHighRisk;
+        newDonation.emergencyMode = checkEmergencyMode(newDonation.expiryTime);
+
+        // User Story 5.2: Automatic Donation Blocking
+        // If risk is critical (> 95), block immediately
+        if (newDonation.riskScore >= 95) {
+            console.log(`[Risk Manager] Blocking donation: Score ${newDonation.riskScore}. Factors: ${newDonation.riskFactors.join(', ')}`);
+            res.status(400).json({
+                message: "Predictive Safety Alert: This donation has a critically high risk score and cannot be accepted.",
+                riskScore: newDonation.riskScore,
+                riskFactors: newDonation.riskFactors
+            });
+            return;
+        }
+
         const savedDonation = await newDonation.save();
 
         // Notify all NGOs about the new donation
@@ -105,15 +132,30 @@ export const getMyDonations = async (req: AuthRequest, res: Response): Promise<v
 export const updateDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+        const userId = req.user?.id;
         const updateData = req.body;
 
-        // Prevent updating critical fields directly if needed, for now allow all
-        const updatedDonation = await FoodDonation.findByIdAndUpdate(id, updateData, { new: true });
+        const donation = await FoodDonation.findById(id);
 
-        if (!updatedDonation) {
+        if (!donation) {
             res.status(404).json({ message: "Donation not found" });
             return;
         }
+
+        // Ownership check
+        if (donation.donorId.toString() !== userId) {
+            res.status(403).json({ message: "Unauthorized: You can only edit your own donations" });
+            return;
+        }
+
+        // Status check - only allow editing if available (or maybe reserved?)
+        // Let's allow editing if it's not collected/expired.
+        if (donation.status === 'collected' || donation.status === 'expired') {
+            res.status(400).json({ message: "Cannot edit donations that are already collected or expired" });
+            return;
+        }
+
+        const updatedDonation = await FoodDonation.findByIdAndUpdate(id, updateData, { new: true });
 
         // Notify NGOs about updated donation
         emitToRole("ngo", "donation:updated", updatedDonation);
@@ -125,15 +167,30 @@ export const updateDonation = async (req: AuthRequest, res: Response): Promise<v
 };
 
 // DELETE /donations/:id
-export const deleteDonation = async (req: Request, res: Response): Promise<void> => {
+export const deleteDonation = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const deletedDonation = await FoodDonation.findByIdAndDelete(id);
+        const userId = req.user?.id;
 
-        if (!deletedDonation) {
+        const donation = await FoodDonation.findById(id);
+
+        if (!donation) {
             res.status(404).json({ message: "Donation not found" });
             return;
         }
+
+        // Ownership check
+        if (donation.donorId.toString() !== userId) {
+            res.status(403).json({ message: "Unauthorized: You can only delete your own donations" });
+            return;
+        }
+
+        if (donation.status === 'collected') {
+            res.status(400).json({ message: "Cannot delete a donation that has already been collected. Please contact support." });
+            return;
+        }
+
+        await FoodDonation.findByIdAndDelete(id);
 
         // Notify NGOs about deleted donation
         emitToRole("ngo", "donation:deleted", { id });

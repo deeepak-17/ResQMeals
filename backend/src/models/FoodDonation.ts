@@ -19,6 +19,11 @@ export interface IFoodDonation extends Document {
     reservedBy?: mongoose.Schema.Types.ObjectId;
     reservedAt?: Date;
     collectedAt?: Date;
+    // User Story 5.1 & 5.6: Dynamic Food Risk & Emergency Mode
+    riskScore?: number;
+    riskFactors?: string[];
+    isHighRisk?: boolean;
+    emergencyMode?: boolean;
     createdAt: Date;
 }
 
@@ -46,6 +51,11 @@ const FoodDonationSchema = new Schema<IFoodDonation>(
         reservedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         reservedAt: { type: Date },
         collectedAt: { type: Date },
+        // User Story 5.1 & 5.6: Dynamic Food Risk & Emergency Mode
+        riskScore: { type: Number, default: 0 },
+        riskFactors: { type: [String], default: [] },
+        isHighRisk: { type: Boolean, default: false },
+        emergencyMode: { type: Boolean, default: false },
     },
     { timestamps: true }
 );

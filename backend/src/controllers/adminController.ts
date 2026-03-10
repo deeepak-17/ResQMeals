@@ -1,6 +1,50 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import User from "../models/User";
+import FoodDonation from "../models/FoodDonation";
+
+/**
+ * GET /api/admin/donations
+ * List all donations (admin only).
+ * Supports optional query params: status, page, limit
+ */
+export const getAllDonations = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { status, page = "1", limit = "20" } = req.query;
+
+        const filter: Record<string, any> = {};
+        if (status && typeof status === "string" && status !== 'all') {
+            filter.status = status;
+        }
+
+        const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 20));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [donations, total] = await Promise.all([
+            FoodDonation.find(filter)
+                .populate("donorId", "name email")
+                .populate("reservedBy", "name email")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum),
+            FoodDonation.countDocuments(filter),
+        ]);
+
+        res.json({
+            donations,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total,
+                pages: Math.ceil(total / limitNum),
+            },
+        });
+    } catch (error: any) {
+        console.error("getAllDonations error:", error.message);
+        res.status(500).json({ message: "Server Error" });
+    }
+};
 
 /**
  * GET /api/admin/users

@@ -46,9 +46,17 @@ export const initializeSocket = (server: HttpServer): Server => {
 
         if (user) {
             // Auto-join user-specific room and role-based room
-            socket.join(`user:${user.id}`);
-            socket.join(`role:${user.role}`);
-            console.log(`Socket connected: ${user.id} (${user.role})`);
+            const userRoom = `user:${user.id}`;
+            const roleRoom = `role:${user.role}`;
+
+            socket.join(userRoom);
+            socket.join(roleRoom);
+
+            console.log(`🔌 Socket connected: ${socket.id}`);
+            console.log(`👤 User ${user.email} (${user.id}) joined rooms: [${userRoom}, ${roleRoom}]`);
+
+            // Debug: List all rooms this socket is in
+            console.log(`🏠 Socket ${socket.id} rooms:`, socket.rooms);
         }
 
         socket.on("disconnect", () => {
