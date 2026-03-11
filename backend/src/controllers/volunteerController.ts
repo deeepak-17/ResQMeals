@@ -114,21 +114,110 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
         // USER STORY 4.6 — Automatic Reassignment
         console.log(`[Volunteer] Task ${id} declined. Triggering automatic reassignment...`);
 
-        // To reassign, we mark the donation as 'reserved' again (so it's available for matching)
-        // and delete the declined task (or keep it as history, but we need a new assignment)
         const donation = await FoodDonation.findById(task.donationId);
-        if (donation) {
-            // Re-emit for matching logic
+        if (donation && donation.location?.coordinates) {
+            // 1. Find ALL volunteers who declined this donation (including current one)
+            const allDeclinedTasks = await PickupTask.find({
+                donationId: task.donationId,
+                status: TaskStatus.DECLINED,
+            }).select("volunteerId");
+            const excludeIds = allDeclinedTasks
+                .map(t => t.volunteerId)
+                .filter(Boolean);
+
+            // 2. Find a new volunteer (same logic as ngoController.acceptDonation)
+            const volunteerFilter: any = {
+                role: "volunteer",
+                verified: true,
+                isAvailable: true,
+            };
+            if (excludeIds.length > 0) {
+                volunteerFilter._id = { $nin: excludeIds };
+            }
+
+            const donationCoords = donation.location.coordinates;
+            let candidates = await User.find({
+                ...volunteerFilter,
+                location: {
+                    $nearSphere: {
+                        $geometry: { type: "Point", coordinates: donationCoords },
+                        $maxDistance: 5000, // 5km
+                    },
+                },
+            }).limit(10);
+
+            // Fallback to all available volunteers if none nearby
+            if (candidates.length === 0) {
+                candidates = await User.find(volunteerFilter).select("-password");
+            }
+
+            if (candidates.length > 0) {
+                // 3. Load balance: pick least busy, tiebreak by reliability
+                const scored = await Promise.all(candidates.map(async (v) => {
+                    const activeTasks = await PickupTask.countDocuments({
+                        volunteerId: v._id,
+                        status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
+                    });
+                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0 };
+                }));
+                scored.sort((a, b) =>
+                    a.activeTasks !== b.activeTasks
+                        ? a.activeTasks - b.activeTasks
+                        : b.reliability - a.reliability
+                );
+                const newVolunteer = scored[0].volunteer;
+
+                // 4. Create new ASSIGNED task
+                const newTask = new PickupTask({
+                    donationId: donation._id,
+                    volunteerId: newVolunteer._id,
+                    ngoId: task.ngoId,
+                    status: TaskStatus.ASSIGNED,
+                    assignedAt: new Date(),
+                    priority: task.priority || 'Normal',
+                    history: [{
+                        status: TaskStatus.ASSIGNED,
+                        timestamp: new Date(),
+                        updatedBy: req.user?.id as any,
+                        note: `Reassigned to ${newVolunteer.name} after previous volunteer declined`
+                    }]
+                });
+                await newTask.save();
+
+                await User.findByIdAndUpdate(newVolunteer._id, {
+                    $inc: { totalAssignedTasks: 1 }
+                });
+
+                emitToUser(newVolunteer._id.toString(), "task:assigned", {
+                    taskId: newTask._id,
+                    donationId: donation._id,
+                });
+
+                console.log(`[Reassignment] Task reassigned to volunteer: ${newVolunteer.name} (${newVolunteer.email})`);
+            } else {
+                // No volunteers available — create a PENDING task for the scheduler
+                console.log('[Reassignment] No available volunteers. Creating PENDING task.');
+                const pendingTask = new PickupTask({
+                    donationId: donation._id,
+                    volunteerId: undefined,
+                    ngoId: task.ngoId,
+                    status: TaskStatus.PENDING,
+                    priority: task.priority || 'Normal',
+                    history: [{
+                        status: TaskStatus.PENDING,
+                        timestamp: new Date(),
+                        updatedBy: req.user?.id as any,
+                        note: "All available volunteers declined. Queued as PENDING."
+                    }]
+                });
+                await pendingTask.save();
+            }
+
+            // Notify admins about the reassignment
             emitToRole('admin', 'task:reassignment_needed', {
                 taskId: task._id,
                 donationId: task.donationId,
             });
-
-            // We can also just set a small timeout and trigger the assignment logic
-            // For now, let's reset the donation status to 'reserved' if no one else is assigned
-            // so the NGO dashboard or scheduler can pick it up.
-            donation.status = "reserved";
-            await donation.save();
         }
 
         res.status(200).json({ message: 'Task declined. Automatic reassignment triggered.', task });
