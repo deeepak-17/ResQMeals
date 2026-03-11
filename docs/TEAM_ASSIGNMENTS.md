@@ -4,11 +4,11 @@
 
 | Name | Role | Primary Focus |
 |------|------|---------------|
-| Deepak | DevOps Engineer | Base Setup, CI/CD, Deployment, Real-time, NGO Backend |
+| Member 1 | DevOps Engineer | Base Setup, CI/CD, Deployment, Real-time, NGO Backend |
 | Member 2 | Backend Developer | Authentication System |
-| Ananya | Full-Stack Developer | Donor Module |
-| Rohan | Full-Stack Developer | Volunteer Module |
-| Vikram | Full-Stack Developer | Admin Module + Matching Engine |
+| Member 3 | Full-Stack Developer | Donor Module |
+| Member 4 | Full-Stack Developer | Volunteer Module |
+| Member 5 | Full-Stack Developer | Admin Module + Matching Engine |
 
 ---
 

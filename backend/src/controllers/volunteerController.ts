@@ -4,7 +4,7 @@ import PickupTask, { TaskStatus } from '../models/PickupTask';
 import FoodDonation from '../models/FoodDonation';
 import User from '../models/User';
 import { emitToRole, emitToUser } from '../utils/socketEvents';
-import { updateVolunteerReliability } from '../utils/scoring';
+import { updateVolunteerReliability, calculateBadge, calculateOnTimeRate } from '../utils/scoring';
 
 // Get all tasks assigned to the logged-in volunteer
 export const getMyTasks = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -43,6 +43,11 @@ export const acceptTask = async (req: AuthRequest, res: Response): Promise<void>
         const donation = await FoodDonation.findById(task.donationId);
         if (donation && donation.expiryTime && new Date(donation.expiryTime) < new Date()) {
             res.status(400).json({ message: 'User Story 3.7: Cannot accept expired donation' });
+            return;
+        }
+
+        if (task.pickupWindowEnd && new Date(task.pickupWindowEnd) < new Date()) {
+            res.status(400).json({ message: 'User Story 5.5: Time window for this pickup has expired' });
             return;
         }
 
@@ -131,7 +136,7 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
             }
 
             const donationCoords = donation.location.coordinates;
-            const nearbyCandidates = await User.find({
+            let candidates = await User.find({
                 ...volunteerFilter,
                 location: {
                     $nearSphere: {
@@ -141,29 +146,25 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
                 },
             }).limit(10);
 
-            // Always include all other available volunteers (even without location)
-            const nearbyIds = nearbyCandidates.map(v => v._id.toString());
-            const allCandidates = await User.find(volunteerFilter).select("-password");
-            const otherCandidates = allCandidates.filter(
-                v => !nearbyIds.includes(v._id.toString())
-            );
-            const candidates = [...nearbyCandidates, ...otherCandidates];
+            // Fallback to all available volunteers if none nearby
+            if (candidates.length === 0) {
+                candidates = await User.find(volunteerFilter).select("-password");
+            }
 
             if (candidates.length > 0) {
-                // 3. Load balance: pick least busy, nearby preference, then reliability
+                // 3. Load balance: pick least busy, tiebreak by reliability
                 const scored = await Promise.all(candidates.map(async (v) => {
                     const activeTasks = await PickupTask.countDocuments({
                         volunteerId: v._id,
                         status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
                     });
-                    const isNearby = nearbyIds.includes(v._id.toString());
-                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0, isNearby };
+                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0 };
                 }));
-                scored.sort((a, b) => {
-                    if (a.activeTasks !== b.activeTasks) return a.activeTasks - b.activeTasks;
-                    if (a.isNearby !== b.isNearby) return a.isNearby ? -1 : 1;
-                    return b.reliability - a.reliability;
-                });
+                scored.sort((a, b) =>
+                    a.activeTasks !== b.activeTasks
+                        ? a.activeTasks - b.activeTasks
+                        : b.reliability - a.reliability
+                );
                 const newVolunteer = scored[0].volunteer;
 
                 // 4. Create new ASSIGNED task
@@ -252,6 +253,9 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
 
         if (status === TaskStatus.PICKED) {
             task.pickedAt = now;
+            if (task.pickupWindowEnd && now > new Date(task.pickupWindowEnd)) {
+                task.missedPickup = true;
+            }
             // User Story 5.3: Chain-of-Custody Tracking
             task.history.push({
                 status: TaskStatus.PICKED,
@@ -315,9 +319,22 @@ export const updateTaskStatus = async (req: AuthRequest, res: Response): Promise
                     volunteer.totalDeliveries += 1;
                     volunteer.totalDistance += 5; // Sim
 
-                    // US 5.4 implementation
+                    // US 5.4 & V6 implementation
                     volunteer.completedTasks += 1;
                     volunteer.reliabilityScore = updateVolunteerReliability(volunteer);
+
+                    if (task.missedPickup) {
+                        volunteer.latePickups = (volunteer.latePickups || 0) + 1;
+                    } else {
+                        volunteer.onTimePickups = (volunteer.onTimePickups || 0) + 1;
+                    }
+
+                    if (task.assignedAt && task.deliveredAt) {
+                        const deliveryMin = (task.deliveredAt.getTime() - task.assignedAt.getTime()) / 60000;
+                        const prevTotal = (volunteer.averageDeliveryTimeMin || 0) * (volunteer.totalDeliveries - 1);
+                        volunteer.averageDeliveryTimeMin = Math.round((prevTotal + deliveryMin) / volunteer.totalDeliveries);
+                    }
+
                     await volunteer.save();
                 }
 
@@ -488,4 +505,183 @@ const checkAndAssignPendingTasks = async (volunteerId: string) => {
     });
 
     console.log(`[Scheduler] Assigned nearby task ${taskToAssign._id} to volunteer ${volunteerId}`);
+};
+
+// User Story V1: Get available tasks based on location
+export const getAvailableTasks = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { lat, lng, radiusKm = 10 } = req.query;
+        if (!lat || !lng) {
+            res.status(400).json({ message: 'Latitude and longitude are required' });
+            return;
+        }
+
+        const vLng = parseFloat(lng as string);
+        const vLat = parseFloat(lat as string);
+        const maxDist = parseFloat(radiusKm as string) * 1000;
+
+        const tasks = await PickupTask.aggregate([
+            { $match: { status: TaskStatus.PENDING } },
+            {
+                $lookup: {
+                    from: 'fooddonations',
+                    localField: 'donationId',
+                    foreignField: '_id',
+                    as: 'donation'
+                }
+            },
+            { $unwind: '$donation' },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'ngoId',
+                    foreignField: '_id',
+                    as: 'ngo'
+                }
+            },
+            { $unwind: { path: '$ngo', preserveNullAndEmptyArrays: true } },
+            {
+                $match: {
+                    'donation.location': {
+                        $nearSphere: {
+                            $geometry: { type: 'Point', coordinates: [vLng, vLat] },
+                            $maxDistance: maxDist
+                        }
+                    },
+                    'donation.expiryTime': { $gt: new Date() } // exclude expired
+                }
+            },
+            { $sort: { priority: -1, createdAt: 1 } }
+        ]);
+
+        const formattedTasks = tasks.map(t => ({
+            ...t,
+            donationId: t.donation,
+            ngoId: { _id: t.ngo?._id, name: t.ngo?.name, address: t.ngo?.location?.address || t.ngo?.address }
+        }));
+
+        res.status(200).json(formattedTasks);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching available tasks', error });
+    }
+};
+
+// User Story V2: Real-time tracking Update
+export const updateLiveLocation = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { lat, lng } = req.body;
+
+        if (!lat || !lng) {
+            res.status(400).json({ message: 'Latitude and longitude are required' });
+            return;
+        }
+
+        const task = await PickupTask.findById(id);
+        if (!task) {
+            res.status(404).json({ message: 'Task not found' });
+            return;
+        }
+
+        task.liveLocation = {
+            coordinates: [lng, lat],
+            updatedAt: new Date()
+        };
+        await task.save();
+
+        const donation = await FoodDonation.findById(task.donationId);
+        if (donation) {
+            emitToUser(donation.donorId.toString(), 'task:location_update', {
+                taskId: task._id,
+                location: task.liveLocation
+            });
+        }
+        emitToUser(task.ngoId.toString(), 'task:location_update', {
+            taskId: task._id,
+            location: task.liveLocation
+        });
+
+        res.status(200).json({ message: 'Live location updated', liveLocation: task.liveLocation });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating live location', error });
+    }
+};
+
+// User Story V4: Emergency reassignment
+export const triggerEmergencyReassign = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const task = await PickupTask.findById(id);
+
+        if (!task) {
+            res.status(404).json({ message: 'Task not found' });
+            return;
+        }
+
+        task.isEmergency = true;
+        task.emergencyAt = new Date();
+        task.priority = 'High';
+
+        // Remove volunteer if assigned/accepted
+        if (task.status === TaskStatus.ASSIGNED || task.status === TaskStatus.ACCEPTED) {
+            task.volunteerId = undefined;
+            task.status = TaskStatus.PENDING;
+            task.history.push({
+                status: TaskStatus.PENDING,
+                timestamp: new Date(),
+                updatedBy: req.user?.id as any,
+                note: 'Task marked as emergency and unassigned.'
+            });
+        }
+
+        await task.save();
+
+        emitToRole('volunteer', 'task:emergency', {
+            taskId: task._id,
+            donationId: task.donationId,
+            message: 'Emergency reassignment needed for high-priority task!'
+        });
+
+        res.status(200).json({ message: 'Emergency reassignment triggered', task });
+    } catch (error) {
+        res.status(500).json({ message: 'Error triggering emergency', error });
+    }
+};
+
+// User Story V6: Performance tracking
+export const getMyPerformanceStats = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const volunteerId = req.user?.id;
+        const user = await User.findById(volunteerId);
+
+        if (!user) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        const stats = {
+            reliabilityScore: user.reliabilityScore || 100,
+            onTimeRate: calculateOnTimeRate(user),
+            totalDeliveries: user.totalDeliveries || 0,
+            totalDistance: user.totalDistance || 0,
+            averageRating: user.averageRating || 5,
+            badge: calculateBadge(user),
+            onTimePickups: user.onTimePickups || 0,
+            latePickups: user.latePickups || 0,
+            averageDeliveryTimeMin: user.averageDeliveryTimeMin || 0
+        };
+
+        const recentTasks = await PickupTask.find({
+            volunteerId,
+            status: { $in: [TaskStatus.DELIVERED, TaskStatus.DECLINED, TaskStatus.PICKED] }
+        })
+            .sort({ updatedAt: -1 })
+            .limit(7)
+            .populate('donationId', 'title')
+            .populate('ngoId', 'name');
+
+        res.status(200).json({ stats, recentTasks });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching performance stats', error });
+    }
 };
