@@ -1,0 +1,20 @@
+{
+  "name": "resqmeals-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.4.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^5.1.4",
+    "happy-dom": "^20.6.2",
+    "vitest": "^4.0.18"
+  }
+}
