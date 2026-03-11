@@ -2,9 +2,17 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { getNearbyDonations, acceptDonation, confirmPickup } from '../controllers/ngoController';
 import FoodDonation from '../models/FoodDonation';
+import User from '../models/User';
+import PickupTask from '../models/PickupTask';
 
-// Mock the FoodDonation model
+// Mock all dependencies
 jest.mock('../models/FoodDonation');
+jest.mock('../models/User');
+jest.mock('../models/PickupTask');
+jest.mock('../utils/socketEvents', () => ({
+    emitToUser: jest.fn(),
+    emitToRole: jest.fn(),
+}));
 
 describe('NGO Controller', () => {
     let mockRes: Partial<Response>;
@@ -115,9 +123,9 @@ describe('NGO Controller', () => {
             });
         });
 
-        it('should cap radius at 50km', async () => {
+        it('should cap radius at 5000km (max allowed)', async () => {
             const mockReq = {
-                query: { lat: '13.0', lng: '80.2', radiusKm: '100' },
+                query: { lat: '13.0', lng: '80.2', radiusKm: '9999' },
             } as unknown as AuthRequest;
 
             (FoodDonation.find as jest.Mock).mockReturnValue({
@@ -129,7 +137,7 @@ describe('NGO Controller', () => {
             await getNearbyDonations(mockReq, mockRes as Response);
 
             expect(mockRes.json).toHaveBeenCalledWith(
-                expect.objectContaining({ radiusKm: 50 })
+                expect.objectContaining({ radiusKm: 5000 })
             );
         });
 
@@ -162,17 +170,40 @@ describe('NGO Controller', () => {
 
             const acceptedDonation = {
                 _id: 'donation1',
+                donorId: { toString: () => 'donor1' },
                 status: 'reserved',
                 reservedBy: 'ngo1',
+                isHighRisk: false,
+                location: { type: 'Point', coordinates: [80.2, 13.0] },
             };
             (FoodDonation.findOneAndUpdate as jest.Mock).mockResolvedValue(acceptedDonation);
 
+            // Controller now queries for declined tasks first
+            (PickupTask.find as jest.Mock).mockReturnValue({
+                select: jest.fn().mockResolvedValue([]), // no previous decliners
+            });
+
+            // Controller calls User.find().limit() for volunteer assignment
+            (User.find as jest.Mock).mockReturnValue({
+                limit: jest.fn().mockResolvedValue([]),
+                select: jest.fn().mockResolvedValue([]),
+            });
+
+            // No volunteers → PENDING task
+            const mockSave = jest.fn().mockResolvedValue(true);
+            (PickupTask as any).mockImplementation(() => ({
+                save: mockSave,
+                _id: 'task1',
+            }));
+
             await acceptDonation(mockReq, mockRes as Response);
 
-            expect(mockRes.json).toHaveBeenCalledWith({
-                message: 'Donation accepted successfully',
-                donation: acceptedDonation,
-            });
+            expect(mockRes.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: 'Donation accepted and transport task created',
+                    donation: acceptedDonation,
+                })
+            );
         });
 
         it('should return 401 if user is not authenticated', async () => {
@@ -248,7 +279,9 @@ describe('NGO Controller', () => {
 
             const collectedDonation = {
                 _id: 'donation1',
+                donorId: { toString: () => 'donor1' },
                 status: 'collected',
+                collectedAt: new Date(),
             };
             (FoodDonation.findOneAndUpdate as jest.Mock).mockResolvedValue(collectedDonation);
 

@@ -121,12 +121,31 @@ describe('Volunteer Controller', () => {
             const mockDonation = {
                 _id: 'donation1',
                 status: 'reserved',
+                location: { coordinates: [80.2, 13.0] },
                 save: jest.fn().mockResolvedValue(true)
             };
 
             (PickupTask.findById as jest.Mock).mockResolvedValue(mockTask);
             (User.findById as jest.Mock).mockResolvedValue(mockVolunteer);
             (FoodDonation.findById as jest.Mock).mockResolvedValue(mockDonation);
+
+            // Mock finding declined tasks
+            (PickupTask.find as jest.Mock).mockReturnValue({
+                select: jest.fn().mockResolvedValue([]), // no previous decliners
+            });
+
+            // Mock finding a new volunteer (no others available to keep it simple → PENDING task created)
+            (User.find as jest.Mock).mockReturnValue({
+                limit: jest.fn().mockResolvedValue([]),
+                select: jest.fn().mockResolvedValue([]),
+            });
+
+            // Mock PickupTask constructor + save for new task
+            const mockNewSave = jest.fn().mockResolvedValue(true);
+            (PickupTask as unknown as jest.Mock).mockImplementation(() => ({
+                save: mockNewSave,
+                _id: 'newTask123'
+            }));
 
             const response = await request(app).post('/api/volunteer/tasks/task1/decline');
 

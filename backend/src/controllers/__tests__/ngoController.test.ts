@@ -88,6 +88,11 @@ describe('NGO Controller', () => {
             // Mock findOneAndUpdate success
             (FoodDonation.findOneAndUpdate as jest.Mock).mockResolvedValue(mockDonation);
 
+            // Mock finding declined tasks
+            (PickupTask.find as jest.Mock).mockReturnValue({
+                select: jest.fn().mockResolvedValue([]), // no previous decliners
+            });
+
             // Mock User.find().limit() — returns array of nearby volunteers
             (User.find as jest.Mock).mockReturnValue({
                 limit: jest.fn().mockResolvedValue([mockVolunteer]),

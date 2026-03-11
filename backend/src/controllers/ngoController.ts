@@ -180,9 +180,27 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
         if (donation) {
             // USER STORY 4.2, 4.3, 4.5: Find available volunteers with Load Balancing
             const donationLocation = donation.location.coordinates;
-            const nearbyVolunteers = await User.find({
+
+            // Find volunteers who already declined this donation — exclude them
+            const declinedTasks = await PickupTask.find({
+                donationId: donation._id,
+                status: TaskStatus.DECLINED,
+            }).select("volunteerId");
+            const excludeVolunteerIds = declinedTasks
+                .map(t => t.volunteerId)
+                .filter(Boolean);
+
+            const volunteerFilter: any = {
                 role: "volunteer",
                 verified: true,
+                isAvailable: true, // Only assign to Online volunteers
+            };
+            if (excludeVolunteerIds.length > 0) {
+                volunteerFilter._id = { $nin: excludeVolunteerIds };
+            }
+
+            const nearbyVolunteers = await User.find({
+                ...volunteerFilter,
                 location: {
                     $nearSphere: {
                         $geometry: { type: "Point", coordinates: donationLocation },
@@ -194,10 +212,10 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
             let availableVolunteer = null;
             let volunteersToConsider = nearbyVolunteers;
 
-            // Fallback: If no volunteers within 5km, consider ALL verified volunteers
+            // Fallback: If no volunteers within 5km, consider ALL matching volunteers
             if (nearbyVolunteers.length === 0) {
                 console.log('[NGO Accept] No volunteers within 5km. Falling back to all verified volunteers...');
-                const allVolunteers = await User.find({ role: "volunteer", verified: true }).select("-password");
+                const allVolunteers = await User.find(volunteerFilter).select("-password");
                 volunteersToConsider = allVolunteers;
             }
 
@@ -208,9 +226,14 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
                         volunteerId: v._id,
                         status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
                     });
-                    return { volunteer: v, activeTasks };
+                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0 };
                 }));
-                volunteerScores.sort((a, b) => a.activeTasks - b.activeTasks);
+                // Sort by least busy, then by highest reliability as tiebreaker
+                volunteerScores.sort((a, b) =>
+                    a.activeTasks !== b.activeTasks
+                        ? a.activeTasks - b.activeTasks
+                        : b.reliability - a.reliability
+                );
                 availableVolunteer = volunteerScores[0].volunteer;
             }
 
