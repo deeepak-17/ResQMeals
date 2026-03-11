@@ -207,17 +207,20 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
                         $maxDistance: 5000, // 5km
                     },
                 },
-            }).limit(10); // Check top 10 nearest
+            }).limit(10);
 
+            // ALWAYS also fetch all other verified/available volunteers
+            // (including those without location set). This prevents a single
+            // geo-located volunteer from monopolizing every assignment.
+            const nearbyIds = nearbyVolunteers.map(v => v._id.toString());
+            const allVolunteers = await User.find(volunteerFilter).select("-password");
+            // Merge: nearby first, then everyone else (deduplicated)
+            const otherVolunteers = allVolunteers.filter(
+                v => !nearbyIds.includes(v._id.toString())
+            );
+
+            const volunteersToConsider = [...nearbyVolunteers, ...otherVolunteers];
             let availableVolunteer = null;
-            let volunteersToConsider = nearbyVolunteers;
-
-            // Fallback: If no volunteers within 5km, consider ALL matching volunteers
-            if (nearbyVolunteers.length === 0) {
-                console.log('[NGO Accept] No volunteers within 5km. Falling back to all verified volunteers...');
-                const allVolunteers = await User.find(volunteerFilter).select("-password");
-                volunteersToConsider = allVolunteers;
-            }
 
             if (volunteersToConsider.length > 0) {
                 // Load Balancing: Get active task counts
@@ -226,14 +229,16 @@ export const acceptDonation = async (req: AuthRequest, res: Response): Promise<v
                         volunteerId: v._id,
                         status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
                     });
-                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0 };
+                    // Nearby volunteers (have location within 5km) get a proximity bonus
+                    const isNearby = nearbyIds.includes(v._id.toString());
+                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0, isNearby };
                 }));
-                // Sort by least busy, then by highest reliability as tiebreaker
-                volunteerScores.sort((a, b) =>
-                    a.activeTasks !== b.activeTasks
-                        ? a.activeTasks - b.activeTasks
-                        : b.reliability - a.reliability
-                );
+                // Sort: least busy first, then nearby preference, then highest reliability
+                volunteerScores.sort((a, b) => {
+                    if (a.activeTasks !== b.activeTasks) return a.activeTasks - b.activeTasks;
+                    if (a.isNearby !== b.isNearby) return a.isNearby ? -1 : 1;
+                    return b.reliability - a.reliability;
+                });
                 availableVolunteer = volunteerScores[0].volunteer;
             }
 

@@ -136,7 +136,7 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
             }
 
             const donationCoords = donation.location.coordinates;
-            let candidates = await User.find({
+            const nearbyCandidates = await User.find({
                 ...volunteerFilter,
                 location: {
                     $nearSphere: {
@@ -146,25 +146,29 @@ export const declineTask = async (req: AuthRequest, res: Response): Promise<void
                 },
             }).limit(10);
 
-            // Fallback to all available volunteers if none nearby
-            if (candidates.length === 0) {
-                candidates = await User.find(volunteerFilter).select("-password");
-            }
+            // Always include all other available volunteers (even without location)
+            const nearbyIds = nearbyCandidates.map(v => v._id.toString());
+            const allCandidates = await User.find(volunteerFilter).select("-password");
+            const otherCandidates = allCandidates.filter(
+                v => !nearbyIds.includes(v._id.toString())
+            );
+            const candidates = [...nearbyCandidates, ...otherCandidates];
 
             if (candidates.length > 0) {
-                // 3. Load balance: pick least busy, tiebreak by reliability
+                // 3. Load balance: pick least busy, nearby preference, then reliability
                 const scored = await Promise.all(candidates.map(async (v) => {
                     const activeTasks = await PickupTask.countDocuments({
                         volunteerId: v._id,
                         status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
                     });
-                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0 };
+                    const isNearby = nearbyIds.includes(v._id.toString());
+                    return { volunteer: v, activeTasks, reliability: v.reliabilityScore || 0, isNearby };
                 }));
-                scored.sort((a, b) =>
-                    a.activeTasks !== b.activeTasks
-                        ? a.activeTasks - b.activeTasks
-                        : b.reliability - a.reliability
-                );
+                scored.sort((a, b) => {
+                    if (a.activeTasks !== b.activeTasks) return a.activeTasks - b.activeTasks;
+                    if (a.isNearby !== b.isNearby) return a.isNearby ? -1 : 1;
+                    return b.reliability - a.reliability;
+                });
                 const newVolunteer = scored[0].volunteer;
 
                 // 4. Create new ASSIGNED task

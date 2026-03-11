@@ -97,13 +97,11 @@ router.post("/register", registerLimiter, upload.single('verificationDocument'),
             password,
             role,
             organizationType,
-            // NOTE: Only donors are auto-verified on registration.
-            // According to docs/BACKEND_STRUCTURE.md, NGO and volunteer accounts
-            // must go through a separate verification workflow (e.g. manual/admin
-            // review or a dedicated verification flow) before being marked as
-            // verified in the system. They are therefore created as unverified
-            // here and handled by that workflow.
-            verified: role === 'donor',
+            // Donors and volunteers are auto-verified on registration.
+            // NGO accounts must go through admin verification (they upload
+            // verification documents). Without auto-verify, new volunteers
+            // would be invisible to the task assignment system.
+            verified: role === 'donor' || role === 'volunteer',
             verificationDocument: req.file ? req.file.path : undefined,
             documentType: req.body.documentType
         });
