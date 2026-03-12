@@ -65,6 +65,12 @@ const UserSchema: Schema = new Schema({
         type: String,
         enum: ['registration_cert', 'tax_exemption', 'ngo_license']
     },
+    phone: {
+        type: String,
+    },
+    profilePicture: {
+        type: String,
+    },
     location: {
         type: { type: String, enum: ["Point"] },
         coordinates: { type: [Number] }, // [longitude, latitude]
