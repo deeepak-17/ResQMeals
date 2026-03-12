@@ -51,5 +51,5 @@
 - **CI/CD**: GitHub Actions (Automated testing).
 - **Testing**: Postman (API) + Jest (Unit).
 - **Deployment**:
-  - **Frontend**: Vercel/Netlify.
-  - **Backend**: Render/Railway.
+  - **Frontend**: Vercel.
+  - **Backend**: Render.

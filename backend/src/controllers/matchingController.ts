@@ -79,7 +79,7 @@ export const assignVolunteer = async (req: AuthRequest, res: Response): Promise<
         const nearbyVolunteers = await User.find({
             role: "volunteer",
             verified: true,
-            isAvailable: true,
+            isAvailable: true, // Only assign to Online volunteers
             location: {
                 $nearSphere: {
                     $geometry: { type: "Point", coordinates: donationLocation },
@@ -88,35 +88,27 @@ export const assignVolunteer = async (req: AuthRequest, res: Response): Promise<
             },
         }).select("-password");
 
-        // Always include all other available volunteers (even without location)
-        const nearbyIds = nearbyVolunteers.map(v => v._id.toString());
-        const allVolunteers = await User.find({ role: "volunteer", verified: true, isAvailable: true }).select("-password");
-        const otherVolunteers = allVolunteers.filter(
-            v => !nearbyIds.includes(v._id.toString())
-        );
-        const volunteersToConsider = [...nearbyVolunteers, ...otherVolunteers];
-
-        if (volunteersToConsider.length === 0) {
-            res.status(404).json({ message: "No volunteers available" });
-            return;
+        if (nearbyVolunteers.length === 0) {
+            // Fallback: If no one is within 5km, look for any available volunteer (Load Balancing)
+            const allVolunteers = await User.find({ role: "volunteer", verified: true, isAvailable: true }).select("-password");
+            if (allVolunteers.length === 0) {
+                res.status(404).json({ message: "No volunteers available" });
+                return;
+            }
+            nearbyVolunteers.push(...allVolunteers);
         }
 
         // Load Balancing logic: Get active task counts for these volunteers
-        const volunteerScores = await Promise.all(volunteersToConsider.map(async (v) => {
+        const volunteerScores = await Promise.all(nearbyVolunteers.map(async (v) => {
             const activeTasks = await PickupTask.countDocuments({
                 volunteerId: v._id,
                 status: { $in: [TaskStatus.ASSIGNED, TaskStatus.ACCEPTED, TaskStatus.PICKED] }
             });
-            const isNearby = nearbyIds.includes(v._id.toString());
-            return { volunteer: v, activeTasks, isNearby };
+            return { volunteer: v, activeTasks };
         }));
 
-        // Sort: least busy, then nearby preference (USER STORY 4.5)
-        volunteerScores.sort((a, b) => {
-            if (a.activeTasks !== b.activeTasks) return a.activeTasks - b.activeTasks;
-            if (a.isNearby !== b.isNearby) return a.isNearby ? -1 : 1;
-            return 0;
-        });
+        // Sort by least busy (USER STORY 4.5)
+        volunteerScores.sort((a, b) => a.activeTasks - b.activeTasks);
 
         const assignedVolunteer = volunteerScores[0].volunteer;
 
