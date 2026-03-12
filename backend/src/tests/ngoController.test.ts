@@ -175,6 +175,7 @@ describe('NGO Controller', () => {
                 reservedBy: 'ngo1',
                 isHighRisk: false,
                 location: { type: 'Point', coordinates: [80.2, 13.0] },
+                donorId: 'donor1',
             };
             (FoodDonation.findOneAndUpdate as jest.Mock).mockResolvedValue(acceptedDonation);
 
@@ -281,6 +282,7 @@ describe('NGO Controller', () => {
                 _id: 'donation1',
                 donorId: { toString: () => 'donor1' },
                 status: 'collected',
+                donorId: 'donor1',
                 collectedAt: new Date(),
             };
             (FoodDonation.findOneAndUpdate as jest.Mock).mockResolvedValue(collectedDonation);
