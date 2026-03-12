@@ -239,4 +239,134 @@ router.get("/me", authMiddleware, async (req: AuthRequest, res: Response): Promi
     }
 });
 
+// @route   PUT /api/auth/profile
+// @desc    Update user profile (name, phone)
+// @access  Private
+router.put("/profile", authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        const { name, phone } = req.body;
+        const updateData: any = {};
+        if (name) updateData.name = name;
+        if (phone !== undefined) updateData.phone = phone;
+
+        const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select("-password");
+        if (!user) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        res.json({ data: user, message: "Profile updated successfully" });
+    } catch (err) {
+        console.error("Profile update error:", (err as Error).message);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+// @route   PUT /api/auth/change-password
+// @desc    Change user password
+// @access  Private
+router.put("/change-password", authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            res.status(400).json({ message: "Current password and new password are required" });
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            res.status(400).json({ message: "New password must be at least 6 characters" });
+            return;
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password as string);
+        if (!isMatch) {
+            res.status(400).json({ message: "Current password is incorrect" });
+            return;
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+
+        res.json({ message: "Password changed successfully" });
+    } catch (err) {
+        console.error("Change password error:", (err as Error).message);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+// Configure multer for avatar uploads
+const avatarStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = "uploads/avatars";
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, "avatar-" + uniqueSuffix + path.extname(file.originalname));
+    },
+});
+
+const avatarUpload = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+    fileFilter: (req, file, cb) => {
+        const filetypes = /jpeg|jpg|png|webp/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error("Only images (jpeg, jpg, png, webp) are allowed!"));
+    },
+});
+
+// @route   POST /api/auth/upload-avatar
+// @desc    Upload profile picture
+// @access  Private
+router.post("/upload-avatar", authMiddleware, avatarUpload.single("avatar"), async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        if (!req.file) {
+            res.status(400).json({ message: "No file uploaded" });
+            return;
+        }
+
+        const profilePicture = `/uploads/avatars/${req.file.filename}`;
+        const user = await User.findByIdAndUpdate(userId, { profilePicture }, { new: true }).select("-password");
+
+        res.json({ data: user, profilePicture, message: "Avatar uploaded successfully" });
+    } catch (err) {
+        console.error("Avatar upload error:", (err as Error).message);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
 export default router;
